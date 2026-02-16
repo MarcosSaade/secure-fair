@@ -1,0 +1,519 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\title{\textbf{Especificación del Proyecto}\\
+\large Secure Fair: Sistema de Registro Criptográficamente Controlado para Ferias de Servicio Social}
+\author{Equipo de Desarrollo}
+\date{Febrero 2026}
+
+\begin{document}
+
+\maketitle
+\newpage
+
+\tableofcontents
+\newpage
+
+\section{Contexto}
+
+Cada semestre, el departamento de Servicio Social de la universidad organiza una feria donde los socioformadores presentan sus proyectos y los estudiantes se registran para participar. Actualmente, los estudiantes se registran para un horario específico para asistir a la feria (evitando aglomeraciones) y reciben un código QR para validar su entrada. Cada proyecto muestra un código QR estático que enlaza a un formulario de registro.
+
+Sin embargo, el sistema actual presenta desafíos operativos y de seguridad que requieren una solución integral y técnicamente robusta.
+
+\section{Planteamiento del Problema}
+
+El proceso actual sufre de cuatro problemas principales:
+
+\subsection{Compartir Códigos QR}
+
+Los estudiantes pueden tomar fotografías de los códigos QR de los proyectos y enviarlos a otros estudiantes, permitiendo registros remotos sin asistir físicamente a la feria. Esto elimina el propósito de la interacción presencial entre estudiantes y socioformadores.
+
+\subsection{Falta de Verificación de Presencia Física}
+
+Aunque los estudiantes deben reservar un horario, el proceso de registro al proyecto no está vinculado a la asistencia física verificada en la feria.
+
+\subsection{Registros Múltiples}
+
+Algunos estudiantes se registran en múltiples proyectos, lo cual viola las políticas de Servicio Social que requieren un único proyecto por periodo.
+
+\subsection{Control de Capacidad}
+
+Los proyectos con vacantes limitadas reciben aplicaciones excesivas sin mecanismos de control en tiempo real, utilizando formularios estáticos sin validación de capacidad o inscripción.
+
+\section{Objetivos del Proyecto}
+
+El sistema debe cumplir con los siguientes objetivos:
+
+\begin{itemize}[leftmargin=*]
+    \item Exigir asistencia física verificada antes del registro al proyecto
+    \item Prevenir que los estudiantes se inscriban en múltiples proyectos dentro del mismo periodo
+    \item Aplicar límites de capacidad por proyecto en tiempo real
+    \item Proporcionar visibilidad operativa en tiempo real al departamento de Servicio Social
+    \item Ser lo suficientemente simple para usuarios no técnicos (socioformadores)
+    \item Incluir componentes criptográficos significativos como requisito del curso
+\end{itemize}
+
+\section{Alcance}
+
+\subsection{Incluido en el MVP}
+
+\begin{itemize}[leftmargin=*]
+    \item Sistema de autenticación basado en roles (Administrador, Socioformador, Estudiante)
+    \item Gestión de organizaciones, proyectos, periodos y franjas horarias
+    \item Sistema de registro de estudiantes a franjas horarias con control de capacidad
+    \item Generación de códigos QR firmados para entrada
+    \item Verificación de entrada (check-in) con escaneo o entrada manual
+    \item Generación de códigos de inscripción de un solo uso con caducidad
+    \item Proceso de inscripción condicionado a verificación física
+    \item Restricción de un proyecto por periodo por estudiante
+    \item Panel de métricas y analíticas para administradores
+    \item Exportación de datos maestros y por proyecto
+    \item Implementación criptográfica (recibos de inscripción firmados digitalmente)
+\end{itemize}
+
+\subsection{Excluido del MVP}
+
+\begin{itemize}[leftmargin=*]
+    \item Lista de espera automática cuando los proyectos están llenos
+    \item Importación de datos mediante Excel (se considerará para iteraciones posteriores)
+    \item Sistema de notificaciones por correo o SMS
+    \item Aplicación móvil nativa
+    \item Integración con sistemas institucionales externos
+\end{itemize}
+
+\section{Roles del Sistema}
+
+\subsection{Estudiante}
+
+\textbf{Responsabilidades:}
+\begin{itemize}[leftmargin=*]
+    \item Registrarse en una franja horaria disponible
+    \item Obtener código QR de entrada
+    \item Verificar su entrada en la feria
+    \item Ingresar código de inscripción proporcionado por el socioformador
+    \item Aceptar las reglas del proyecto
+    \item Recibir confirmación de inscripción firmada
+\end{itemize}
+
+\textbf{Restricciones:}
+\begin{itemize}[leftmargin=*]
+    \item Solo puede registrarse en un proyecto por periodo de feria
+    \item Debe estar físicamente verificado (check-in) para inscribirse
+    \item No puede compartir códigos de inscripción (son de un solo uso)
+\end{itemize}
+
+\subsection{Socioformador}
+
+\textbf{Responsabilidades:}
+\begin{itemize}[leftmargin=*]
+    \item Acceder al panel con proyectos asignados
+    \item Generar códigos de inscripción de corta duración
+    \item Mostrar código en stand físico
+    \item Ver conteo en tiempo real de inscripciones
+    \item Exportar lista de estudiantes inscritos
+\end{itemize}
+
+\textbf{Características del diseño:}
+\begin{itemize}[leftmargin=*]
+    \item Interfaz minimalista diseñada para usuarios no técnicos
+    \item Operación sin conocimientos de programación
+    \item Generación de códigos con un clic
+\end{itemize}
+
+\subsection{Administrador (Servicio Social)}
+
+\textbf{Responsabilidades:}
+\begin{itemize}[leftmargin=*]
+    \item Crear y gestionar periodos de feria
+    \item Gestionar organizaciones y proyectos
+    \item Definir franjas horarias con capacidades
+    \item Asignar socioformadores a proyectos
+    \item Monitorear asistencia en tiempo real
+    \item Revisar analíticas de inscripciones
+    \item Exportar tablas maestras de registro
+    \item Realizar verificación de entrada (check-in)
+\end{itemize}
+
+\section{Arquitectura del Sistema}
+
+\subsection{Stack Tecnológico}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Frontend:} React con Vite y TypeScript, Material-UI o shadcn/ui, React Router, React Query
+    \item \textbf{Backend:} FastAPI (Python), SQLAlchemy 2.0, Alembic para migraciones
+    \item \textbf{Base de Datos:} PostgreSQL con restricciones transaccionales
+    \item \textbf{Autenticación:} JWT con tokens de acceso de corta duración
+    \item \textbf{Criptografía:} Ed25519 para firmas digitales usando pynacl o cryptography
+    \item \textbf{Hashing:} argon2-cffi para contraseñas, HMAC para códigos
+    \item \textbf{DevOps:} Docker Compose, despliegue en Render/Fly.io/Railway
+\end{itemize}
+
+\subsection{Diagrama de Alto Nivel}
+
+\begin{verbatim}
++-------------+         +-------------+         +--------------+
+|   Cliente   | HTTPS   |   FastAPI   |  SQL    |  PostgreSQL  |
+|   React     +-------->|   Backend   +-------->|   Database   |
+|   (SPA)     |<--------+   (API)     |<--------+              |
++-------------+         +-------------+         +--------------+
+                              |
+                              | Crypto Operations
+                              v
+                        +-------------+
+                        |  Ed25519    |
+                        |  Signing    |
+                        +-------------+
+\end{verbatim}
+
+\section{Lista de Características}
+
+\subsection{Características Centrales (MVP)}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Autenticación y Control de Acceso Basado en Roles (RBAC)}
+    \begin{itemize}
+        \item Login/logout con JWT
+        \item Protección de endpoints por rol
+        \item Verificación de permisos en servidor
+    \end{itemize}
+    
+    \item \textbf{Gestión de Periodos y Franjas Horarias}
+    \begin{itemize}
+        \item CRUD de periodos de feria
+        \item Definición de franjas horarias con capacidad
+        \item Control de capacidad en tiempo real
+    \end{itemize}
+    
+    \item \textbf{Gestión de Organizaciones y Proyectos}
+    \begin{itemize}
+        \item CRUD de organizaciones socioformadoras
+        \item CRUD de proyectos con descripción y reglas
+        \item Asignación de capacidad por proyecto
+        \item Vinculación de socioformadores a proyectos
+    \end{itemize}
+    
+    \item \textbf{Registro a Franjas Horarias}
+    \begin{itemize}
+        \item Estudiantes reservan franja horaria
+        \item Validación de capacidad antes de confirmar
+        \item Restricción de registro único por estudiante
+    \end{itemize}
+    
+    \item \textbf{Sistema de Verificación de Entrada}
+    \begin{itemize}
+        \item Generación de QR firmado para cada reservación
+        \item Endpoint de check-in para administradores
+        \item Marca temporal de verificación
+        \item Dashboard de asistencia en tiempo real
+    \end{itemize}
+    
+    \item \textbf{Generación de Códigos de Inscripción}
+    \begin{itemize}
+        \item Socioformador genera código alfanumérico corto
+        \item Almacenamiento como hash HMAC (no texto plano)
+        \item Caducidad configurable (60-120 segundos)
+        \item Un solo uso por código
+    \end{itemize}
+    
+    \item \textbf{Inscripción Condicionada}
+    \begin{itemize}
+        \item Estudiante ingresa código manualmente
+        \item Validación de check-in previo obligatorio
+        \item Verificación de inscripción única por periodo
+        \item Validación de capacidad disponible
+        \item Transacción atómica para prevenir condiciones de carrera
+    \end{itemize}
+    
+    \item \textbf{Recibos de Inscripción Firmados}
+    \begin{itemize}
+        \item Generación de recibo con firma Ed25519
+        \item Almacenamiento de firma en base de datos
+        \item Endpoint de verificación de integridad
+    \end{itemize}
+    
+    \item \textbf{Analíticas y Reportes}
+    \begin{itemize}
+        \item Dashboard con métricas clave
+        \item Gráficas de asistencia por franja horaria
+        \item Inscripciones por proyecto
+        \item Tasas de ocupación
+    \end{itemize}
+    
+    \item \textbf{Exportación de Datos}
+    \begin{itemize}
+        \item Exportación maestra en CSV/XLSX
+        \item Exportación por proyecto para socioformadores
+        \item Filtros por periodo y organización
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Características Extendidas (Post-MVP)}
+
+\begin{itemize}[leftmargin=*]
+    \item Importación de proyectos mediante plantilla Excel
+    \item Notificaciones por correo electrónico
+\end{itemize}
+
+\section{Flujos de Alto Nivel}
+
+\subsection{Flujo de Registro a Franja Horaria}
+
+\begin{enumerate}
+    \item Estudiante ingresa al sistema
+    \item Visualiza franjas horarias disponibles del periodo activo
+    \item Selecciona franja con cupos disponibles
+    \item Sistema valida capacidad en tiempo real
+    \item Confirma registro
+    \item Sistema genera código QR firmado
+    \item Estudiante descarga o visualiza QR
+\end{enumerate}
+
+\subsection{Flujo de Verificación de Entrada}
+
+\begin{enumerate}
+    \item Estudiante llega a la entrada de la feria
+    \item Muestra código QR al personal de Servicio Social
+    \item Administrador escanea o ingresa token manualmente
+    \item Sistema verifica firma digital y validez temporal
+    \item Sistema marca estudiante como verificado (check-in)
+    \item Estudiante recibe confirmación de acceso
+\end{enumerate}
+
+\subsection{Flujo de Inscripción a Proyecto}
+
+\begin{enumerate}
+    \item Socioformador genera código desde su panel
+    \item Sistema crea código aleatorio, lo hashea y establece caducidad
+    \item Código se muestra en pantalla del socioformador
+    \item Estudiante (verificado previamente) ingresa código en su aplicación
+    \item Sistema valida:
+    \begin{itemize}
+        \item Estudiante tiene check-in activo
+        \item Código es válido y no ha expirado
+        \item Código no ha sido usado
+        \item Estudiante no está inscrito en otro proyecto del periodo
+        \item Proyecto tiene capacidad disponible
+    \end{itemize}
+    \item Si todas las validaciones pasan:
+    \begin{itemize}
+        \item Se crea registro de inscripción
+        \item Se marca código como usado
+        \item Se genera recibo firmado digitalmente
+        \item Se decrementa capacidad disponible
+    \end{itemize}
+    \item Estudiante recibe confirmación con recibo firmado
+\end{enumerate}
+
+\section{Modelo de Seguridad}
+
+\subsection{Principios de Seguridad}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Defensa en profundidad:} Validación tanto en cliente como en servidor
+    \item \textbf{Privilegio mínimo:} Cada rol solo accede a recursos necesarios
+    \item \textbf{Fail-secure:} Fallos resultan en denegación de acceso, no en permisos
+    \item \textbf{Separación de responsabilidades:} Lógica crítica aislada en capa de negocio
+\end{itemize}
+
+\subsection{Control de Acceso}
+
+\textbf{Implementación RBAC:}
+\begin{itemize}[leftmargin=*]
+    \item Roles definidos en base de datos (ADMIN, SOCIO, STUDENT)
+    \item Decoradores en endpoints verifican rol requerido
+    \item Tokens JWT incluyen rol en payload
+    \item Validación de pertenencia (socioformador solo ve sus proyectos)
+\end{itemize}
+
+\subsection{Protección de Endpoints}
+
+\begin{itemize}[leftmargin=*]
+    \item Autenticación requerida en todos los endpoints excepto /auth/login
+    \item Validación de rol específico por endpoint
+    \item Rate limiting en endpoints críticos (redención de códigos, check-in)
+    \item Validación de entrada con pydantic schemas
+\end{itemize}
+
+\subsection{Protección contra Ataques Comunes}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Fuerza bruta:} Límite de intentos de login, códigos de inscripción
+    \item \textbf{Inyección SQL:} Uso de ORM parametrizado (SQLAlchemy)
+    \item \textbf{XSS:} Sanitización en frontend, Content-Security-Policy headers
+    \item \textbf{CSRF:} Tokens JWT en headers (no cookies), SameSite si se usan cookies
+    \item \textbf{Timing attacks:} Comparación constante de hashes
+    \item \textbf{Condiciones de carrera:} Transacciones con SELECT FOR UPDATE
+\end{itemize}
+
+\section{Diseño Criptográfico}
+
+\subsection{Hashing de Contraseñas}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Algoritmo:} Argon2id
+    \item \textbf{Librería:} argon2-cffi
+    \item \textbf{Parámetros:} Valores por defecto seguros
+    \item \textbf{Propósito:} Protección de credenciales en base de datos
+\end{itemize}
+
+\subsection{Códigos de Inscripción}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Generación:} Caracteres alfanuméricos aleatorios (6-8 caracteres)
+    \item \textbf{Almacenamiento:} HMAC-SHA256 con clave secreta del servidor
+    \item \textbf{Verificación:} Comparación de HMAC en tiempo constante
+    \item \textbf{Caducidad:} 60-120 segundos desde generación
+    \item \textbf{Un solo uso:} Marcado como usado tras redención exitosa
+\end{itemize}
+
+\subsection{Recibos de Inscripción Firmados}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Algoritmo:} Ed25519 (firma de curva elíptica)
+    \item \textbf{Librería:} pynacl o cryptography
+    \item \textbf{Contenido del recibo:}
+    \begin{verbatim}
+    {
+        "student_id": "<uuid>",
+        "project_id": "<uuid>",
+        "period_id": "<uuid>",
+        "timestamp": "<ISO-8601>",
+        "nonce": "<random>"
+    }
+    \end{verbatim}
+    \item \textbf{Proceso:}
+    \begin{enumerate}
+        \item Servidor serializa datos del recibo (JSON canónico)
+        \item Calcula firma Ed25519 con clave privada del servidor
+        \item Almacena firma en base de datos
+        \item Retorna recibo + firma al cliente
+    \end{enumerate}
+    \item \textbf{Verificación:}
+    \begin{enumerate}
+        \item Cliente o auditor envía recibo + firma
+        \item Servidor re-serializa datos
+        \item Verifica firma con clave pública
+        \item Retorna válido/inválido
+    \end{enumerate}
+    \item \textbf{Propósito:} Integridad, autenticidad y no repudio
+\end{itemize}
+
+\subsection{Tokens QR de Entrada}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Contenido:} student\_id, slot\_id, timestamp, firma
+    \item \textbf{Formato:} JWT firmado con clave del servidor o estructura similar
+    \item \textbf{Caducidad:} Válido para el día del slot reservado
+    \item \textbf{Verificación:} Validación de firma antes de check-in
+\end{itemize}
+
+\section{Modelo de Amenazas}
+
+\subsection{Amenazas Identificadas}
+
+\begin{enumerate}
+    \item \textbf{Compartir QR de proyecto}
+    \begin{itemize}
+        \item \textit{Mitigación:} Códigos efímeros de un solo uso en lugar de QR estático
+    \end{itemize}
+    
+    \item \textbf{Registro remoto sin asistencia física}
+    \begin{itemize}
+        \item \textit{Mitigación:} Gate de check-in obligatorio antes de inscripción
+    \end{itemize}
+    
+    \item \textbf{Inscripción múltiple en proyectos}
+    \begin{itemize}
+        \item \textit{Mitigación:} Restricción UNIQUE en DB (student\_id, period\_id)
+    \end{itemize}
+    
+    \item \textbf{Exceso de capacidad}
+    \begin{itemize}
+        \item \textit{Mitigación:} Transacciones atómicas con verificación de capacidad
+    \end{itemize}
+    
+    \item \textbf{Fuerza bruta en códigos}
+    \begin{itemize}
+        \item \textit{Mitigación:} Rate limiting + caducidad + complejidad del código
+    \end{itemize}
+    
+    \item \textbf{Suplantación de identidad}
+    \begin{itemize}
+        \item \textit{Mitigación:} Autenticación JWT + verificación en check-in
+    \end{itemize}
+    
+    \item \textbf{Manipulación de recibos}
+    \begin{itemize}
+        \item \textit{Mitigación:} Firmas Ed25519 verificables
+    \end{itemize}
+    
+    \item \textbf{Condiciones de carrera en capacidad}
+    \begin{itemize}
+        \item \textit{Mitigación:} SELECT FOR UPDATE en transacciones críticas
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Supuestos de Seguridad}
+
+\begin{itemize}[leftmargin=*]
+    \item Las claves privadas del servidor están protegidas mediante variables de entorno
+    \item El personal de Servicio Social verifica identidad física durante check-in
+    \item La comunicación cliente-servidor usa HTTPS (TLS 1.3)
+    \item La base de datos está protegida por firewall y acceso restringido
+    \item Los dispositivos de los socioformadores están bajo su control físico
+\end{itemize}
+
+\section{Criterios de Éxito}
+
+\subsection{Funcionales}
+
+\begin{itemize}[leftmargin=*]
+    \item El sistema previene exitosamente inscripciones remotas (sin check-in)
+    \item Los estudiantes no pueden inscribirse en más de un proyecto por periodo
+    \item Los límites de capacidad se respetan en todos los escenarios
+    \item Los códigos expiran correctamente y son de un solo uso
+    \item Los recibos firmados son verificables y detectan manipulación
+    \item Las exportaciones contienen datos completos y correctos
+\end{itemize}
+
+\subsection{No Funcionales}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Performance:} Carga de página < 2s, redención de código < 500ms
+    \item \textbf{Disponibilidad:} Uptime > 99\% durante periodo de feria activa
+    \item \textbf{Usabilidad:} Socioformadores pueden generar códigos sin capacitación
+    \item \textbf{Seguridad:} Cero vulnerabilidades críticas en pruebas de seguridad
+    \item \textbf{Escalabilidad:} Soporte para 500+ estudiantes simultáneos
+\end{itemize}
+
+\subsection{Académicos}
+
+\begin{itemize}[leftmargin=*]
+    \item Demostración clara del componente criptográfico
+    \item Documentación técnica completa de arquitectura
+    \item Código fuente bien estructurado y comentado
+    \item Pruebas automatizadas con cobertura > 70\%
+    \item Presentación efectiva con demo en vivo funcional
+\end{itemize}
+
+\section{Conclusión}
+
+Este proyecto aborda un problema real del departamento de Servicio Social mediante una solución técnicamente sólida que integra conceptos de seguridad, criptografía, arquitectura de sistemas y desarrollo full-stack. El enfoque en verificación física mediante check-in, combinado con códigos efímeros y recibos firmados digitalmente, proporciona un sistema robusto que cumple tanto los requisitos operativos como los académicos del curso de criptografía.
+
+\end{document}
