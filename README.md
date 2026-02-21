@@ -1,70 +1,299 @@
-# Getting Started with Create React App
+# Frontend - Secure Fair
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React + TypeScript frontend for the Secure Fair system.
+
+## Structure
+
+```
+frontend/
+├── src/
+│   ├── components/       # Reusable components
+│   │   ├── common/       # Generic components
+│   │   ├── auth/         # Auth-related
+│   │   ├── student/      # Student-specific
+│   │   ├── socio/        # Socio-specific
+│   │   └── admin/        # Admin-specific
+│   ├── pages/            # Page components
+│   │   ├── Login.tsx
+│   │   ├── student/
+│   │   ├── socio/
+│   │   └── admin/
+│   ├── services/         # API clients
+│   │   ├── api.ts        # Axios instance
+│   │   ├── auth.ts
+│   │   ├── student.ts
+│   │   ├── socio.ts
+│   │   └── admin.ts
+│   ├── hooks/            # Custom React hooks
+│   │   ├── useAuth.ts
+│   │   ├── useProjects.ts
+│   │   └── ...
+│   ├── utils/            # Utility functions
+│   │   ├── constants.ts
+│   │   ├── validation.ts
+│   │   └── ...
+│   ├── types/            # TypeScript types
+│   │   ├── user.ts
+│   │   ├── project.ts
+│   │   └── ...
+│   ├── App.tsx           # Main app component
+│   ├── main.tsx          # Entry point
+│   └── routes.tsx        # Route configuration
+├── public/               # Static files
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── .env.example
+└── README.md
+```
+
+## Setup
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Copy environment file
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+### Environment Variables
+
+Create `.env` file:
+
+```bash
+VITE_API_URL=http://localhost:8000/api
+VITE_APP_NAME=Secure Fair
+```
+
+### Run Development Server
+
+```bash
+npm run dev
+```
+
+Access at: http://localhost:5173
 
 ## Available Scripts
 
-In the project directory, you can run:
+```bash
+# Development
+npm run dev              # Start dev server
 
-### `npm start`
+# Build
+npm run build            # Production build
+npm run preview          # Preview production build
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+# Linting
+npm run lint             # Run ESLint
+npm run lint:fix         # Fix linting issues
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+# Formatting
+npm run format           # Format with Prettier
 
-### `npm test`
+# Testing
+npm test                 # Run tests
+npm run test:ui          # Run tests with UI
+npm run test:coverage    # Coverage report
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Tech Stack
 
-### `npm run build`
+- **React 18** - UI library
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **React Router v6** - Routing
+- **React Query (TanStack Query)** - Data fetching
+- **Material-UI** - Component library
+- **Axios** - HTTP client
+- **React Hook Form** - Forms
+- **Zod** - Validation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Project Features
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Authentication
+- Login/logout
+- Protected routes by role
+- Token management
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Student Dashboard
+- View available time slots
+- Register for slots
+- Display QR code for check-in
+- Redeem enrollment codes
+- View enrollment status
 
-### `npm run eject`
+### Socioformador Dashboard
+- View assigned projects
+- Generate enrollment codes
+- View enrolled students
+- Export student lists
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Admin Dashboard
+- Manage periods, organizations, projects
+- Configure time slots
+- Perform check-ins
+- View analytics
+- Export data
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Routing Structure
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```
+/login                    # Login page
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+/student/*                # Student routes
+  /slots                  # Browse slots
+  /my-qr                  # QR code
+  /enroll                 # Redeem code
+  /status                 # Enrollment status
 
-## Learn More
+/socio/*                  # Socio routes
+  /projects               # My projects
+  /generate-code          # Generate codes
+  /students               # Enrolled students
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+/admin/*                  # Admin routes
+  /periods                # Manage periods
+  /organizations          # Manage orgs
+  /projects               # Manage projects
+  /slots                  # Manage slots
+  /checkin                # Perform check-in
+  /dashboard              # Analytics
+  /exports                # Data exports
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## State Management
 
-### Code Splitting
+Using React Query for server state:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```typescript
+// Example: Fetching projects
+const { data, isLoading, error } = useQuery({
+  queryKey: ['projects'],
+  queryFn: () => api.getProjects()
+});
+```
 
-### Analyzing the Bundle Size
+## API Integration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+All API calls in `src/services/`:
 
-### Making a Progressive Web App
+```typescript
+// services/api.ts
+import axios from 'axios';
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
 
-### Advanced Configuration
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+export default api;
+```
 
-### Deployment
+## Component Guidelines
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- Use functional components with hooks
+- TypeScript for all components
+- Props interfaces defined
+- Error boundaries for error handling
+- Loading states for async operations
+- Form validation with Zod schemas
 
-### `npm run build` fails to minify
+## Code Style
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```bash
+# ESLint configuration in .eslintrc.json
+# Prettier configuration in .prettierrc
+
+# Format before commit
+npm run format
+npm run lint:fix
+```
+
+## Building for Production
+
+```bash
+# Create production build
+npm run build
+
+# Output in dist/ directory
+# Deploy dist/ to static hosting (Vercel, Netlify, etc.)
+```
+
+## Environment-Specific Builds
+
+```bash
+# Development
+npm run dev
+
+# Staging
+VITE_API_URL=https://staging-api.com npm run build
+
+# Production
+VITE_API_URL=https://api.securefair.com npm run build
+```
+
+## Testing
+
+```bash
+# Unit tests with Vitest
+npm test
+
+# Component tests
+npm run test:ui
+
+# E2E tests (if configured)
+npm run test:e2e
+```
+
+## Best Practices
+
+- Keep components small and focused
+- Use custom hooks for reusable logic
+- Implement proper error handling
+- Add loading states for better UX
+- Validate all user inputs
+- Use TypeScript strictly
+- Write tests for critical paths
+
+## Troubleshooting
+
+**Port already in use**:
+```bash
+# Change port in vite.config.ts
+export default defineConfig({
+  server: { port: 3001 }
+});
+```
+
+**API connection errors**:
+- Check VITE_API_URL in .env
+- Ensure backend is running
+- Check CORS configuration
+
+**Build fails**:
+```bash
+# Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+## Production Deployment
+
+See main project documentation for deployment guide.
