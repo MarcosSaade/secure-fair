@@ -60,6 +60,7 @@ permissions = {
     "exportar_datos": "Generar reportes exportables",
 }
 
+
 # Assign permissions to roles
 roles["estudiante"].add_permission(permissions["registrarse"])
 roles["estudiante"].add_permission(permissions["check_in"])
