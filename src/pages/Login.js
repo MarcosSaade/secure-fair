@@ -27,7 +27,7 @@ const Login = () => {
     if (!username.trim()) return setError('Ingresa tu username');
     if (!password) return setError('Ingresa tu contraseña');
 
-    // 🔎 Buscar usuario en base dummy
+    //  Buscar usuario en base dummy
     const userFound = users.find(
       (user) =>
         user.username === username &&
