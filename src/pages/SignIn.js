@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+
 import {
   Box,
   Container,
@@ -38,7 +39,7 @@ const SignIn = () => {
     sessionStorage.setItem('username', username);
 
     if (role === 'student') {
-      navigate('/student');
+      navigate('/student');;
     } else if (role === 'socio') {
       navigate('/socio');
     } else if (role === 'admin') {

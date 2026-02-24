@@ -42,7 +42,7 @@ const Login = () => {
     sessionStorage.setItem('username', userFound.username);
     sessionStorage.setItem('role', userFound.role);
 
-    // 🔥 Redirección dinámica según rol
+    //  Redirección dinámica según rol
     navigate(`/${userFound.role}`);
   };
 

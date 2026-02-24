@@ -13,15 +13,12 @@ import SignIn from './pages/SignIn';
 import Login from './pages/Login';
 
 // ==================== STUDENT PAGES ====================
-const StudentHome = () => (
-  <Box sx={{ p: 4, textAlign: 'center' }}>
-    <Typography variant="h4">Hello World! 👋</Typography>
-    <Typography variant="body1" sx={{ mt: 2 }}>Welcome, Student</Typography>
-  </Box>
-);
-const StudentRegister = () => <Box sx={{ p: 4 }}>Student Registration Form</Box>;
+
+//const StudentRegister = () => <Box sx={{ p: 4 }}>Student Registration Form</Box>;
+import StudentRegister from "./pages/student/StudentRegister";
+import StudentQR from './pages/student/StudentQR';
 const StudentRegisterStatus = () => <Box sx={{ p: 4 }}>Registration Status Validation</Box>;
-const StudentQR = () => <Box sx={{ p: 4 }}>QR Validation Screen</Box>;
+//const StudentQR = () => <Box sx={{ p: 4 }}>QR Validation Screen</Box>;
 const StudentConfirmation = () => <Box sx={{ p: 4 }}>Policy Acceptance & Code Entry</Box>;
 const StudentResult = () => <Box sx={{ p: 4 }}>Final Enrollment Result</Box>;
 const StudentProfile = () => <Box sx={{ p: 4 }}>Student Profile & Status</Box>;
@@ -65,14 +62,15 @@ function App() {
         
 
         {/* ==================== STUDENT ROUTES (Nested with StudentLayout) ==================== */}
-        <Route element={<StudentLayout />}>
-          <Route path="/student" element={<StudentHome />} />
-          <Route path="/student/register" element={<StudentRegister />} />
-          <Route path="/student/register/status" element={<StudentRegisterStatus />} />
-          <Route path="/student/qr" element={<StudentQR />} />
-          <Route path="/student/confirmation" element={<StudentConfirmation />} />
-          <Route path="/student/result" element={<StudentResult />} />
-          <Route path="/student/profile" element={<StudentProfile />} />
+        <Route path="/student/*" element={<StudentLayout />}>
+          <Route index element={<StudentRegister />} />
+          <Route path="register" element={<StudentRegister />} />
+          <Route index element={<StudentQR />} />
+          <Route path = 'qr' element={<StudentQR />} />
+          <Route path="status" element={<StudentRegisterStatus />} />
+          <Route path="confirmation" element={<StudentConfirmation />} />
+          <Route path="result" element={<StudentResult />} />
+          <Route path="profile" element={<StudentProfile />} />
         </Route>
 
         {/* ==================== SOCIO-FORMADOR ROUTES (Nested with SocioLayout) ==================== */}
