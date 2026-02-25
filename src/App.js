@@ -34,12 +34,7 @@ const SocioGenerateCode = () => <Box sx={{ p: 4 }}>Generate Code</Box>;
 const SocioProfile = () => <Box sx={{ p: 4 }}>Socio Profile</Box>;
 
 // ==================== ADMIN PAGES ====================
-const AdminDashboard = () => (
-  <Box sx={{ p: 4, textAlign: 'center' }}>
-    <Typography variant="h4">Hello World! 👋</Typography>
-    <Typography variant="body1" sx={{ mt: 2 }}>Welcome, Administrator</Typography>
-  </Box>
-);
+const AdminMain = () => <Box sx={{ p: 4 }}>Main page</Box>;
 const AdminImport = () => <Box sx={{ p: 4 }}>Import Data</Box>;
 const AdminExport = () => <Box sx={{ p: 4 }}>Export Data</Box>;
 const AdminEdit = () => <Box sx={{ p: 4 }}>Edit Management</Box>;
@@ -82,7 +77,8 @@ function App() {
 
         {/* ==================== ADMIN ROUTES (Nested with AdminLayout) ==================== */}
         <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route index element={<AdminMain />} />
+          <Route path="main_page" element={<AdminMain />} />
           <Route path="/admin/import" element={<AdminImport />} />
           <Route path="/admin/export" element={<AdminExport />} />
           <Route path="/admin/edit" element={<AdminEdit />} />

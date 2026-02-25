@@ -10,7 +10,6 @@ import {
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { QRCodeCanvas } from "qrcode.react";
 
-
 import logo from "../Logo.png";
 
 const StudentQR = () => {
@@ -37,45 +36,49 @@ const StudentQR = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
-        navigate("/student/StudentRegisterStatus");
-    };
+    navigate("/student/StudentRegisterStatus");
+  };
 
-   const handleGoHome = () => {
-        navigate("/student/StudentRegister");
-    };
+  const handleGoHome = () => {
+    navigate("/student/StudentRegister");
+  };
 
+  const handleProfile = () => {
+    navigate("/student/StudentProfile");
+  };
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        backgroundColor: "#2479bd",
+        background: "linear-gradient(135deg, #2479bd 0%, #1e3a8a 100%)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center"
       }}
     >
-    <Paper
-    elevation={6}
-    sx={{
-        width: 360,
-        height: "85vh",
-        borderRadius: 6,
-        p: 3,
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "white"
-    }}
+      <Paper
+        elevation={10}
+        sx={{
+          width: 380,
+          height: "85vh",
+          borderRadius: 8,
+          p: 4,
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "#f9fafb"
+        }}
       >
-        {/* HEADER DENTRO DE LA TARJETA */}
+        {/* HEADER */}
         <Box
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center"
+            alignItems: "center",
+            pb: 2,
+            borderBottom: "1px solid #e5e7eb"
           }}
         >
-          {/* Logo */}
           <Box
             component="img"
             src={logo}
@@ -83,40 +86,62 @@ const StudentQR = () => {
             sx={{ height: 40 }}
           />
 
-          {/* Icono perfil */}
-          <IconButton>
-            <AccountCircleIcon sx={{ fontSize: 36 }} />
+          <IconButton
+            onClick={handleProfile}
+            sx={{
+              backgroundColor: "#e0f2fe",
+              "&:hover": { backgroundColor: "#bae6fd" }
+            }}
+          >
+            <AccountCircleIcon sx={{ fontSize: 34, color: "#0369a1" }} />
           </IconButton>
         </Box>
 
         {/* CONTENIDO CENTRAL */}
         <Box
-        sx={{
+          sx={{
             flexGrow: 1,
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
             textAlign: "center"
-        }}
+          }}
         >
-        <Typography variant="h5" fontWeight="bold" mb={2}>
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            sx={{
+              color: getColor(),
+              letterSpacing: 1,
+              mb: 1
+            }}
+          >
             {getTitle()}
-        </Typography>
+          </Typography>
 
-        <Typography
+          <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mb: 4 }}
-        >
+          >
             {getDescription()}
-        </Typography>
+          </Typography>
 
-        <QRCodeCanvas
-            value="student-12345"
-            size={220}
-            fgColor={getColor()}
-        />
+          <Box
+            sx={{
+              backgroundColor: "white",
+              p: 3,
+              borderRadius: 4,
+              boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
+            }}
+          >
+            <QRCodeCanvas
+              value="student-12345"
+              size={200}
+              fgColor={getColor()}
+            />
+          </Box>
         </Box>
 
         {/* BOTONES */}
