@@ -4,7 +4,7 @@
 // Admin will also be able to filter students by project and organization, and search for specific students by name or matricula.
 // Admin can also delete or add students manually, in case of any issues with the import process.
 // Admin can delete and add project or organization and edit their information.
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Paper,
@@ -21,134 +21,181 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
+  DialogActions
 } from "@mui/material";
 
-const API_BASE = "http://localhost:5000/api";
+// Import data base
+import { students as studentsData } from "../students.js";
+import { projects as projectsData } from "../projects.js";
+import { organizations as orgsData } from "../organization.js";
 
 const AdminEdit = () => {
-  const [students, setStudents] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [organizations, setOrganizations] = useState([]);
+  // Convertir objetos a array mapeando ids
+  const [students, setStudents] = useState(
+    Object.values(studentsData).map((s) => ({
+      ...s,
+      id: s.user_id,
+      name: s.nombre,
+      matricula: s.matricula,
+      projectId: s.project_id,
+      organizationId: s.org_id,
+      correo: s.correo,
+      telefono: s.telefono,
+      registeredAt: s.registered_at,
+    }))
+  );
+
+  const [projects, setProjects] = useState(
+    Object.values(projectsData).map((p, index) => ({
+      ...p,
+      id: index + 1,
+      name: Object.keys(projectsData)[index],
+    }))
+  );
+
+  const [organizations, setOrganizations] = useState(
+    Object.values(orgsData).map((o) => ({
+      ...o,
+      id: o.org_id,
+      name: o.name_org,
+    }))
+  );
 
   const [search, setSearch] = useState("");
   const [filterProject, setFilterProject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
 
-  const [open, setOpen] = useState(false);
+  // Para diálogos
+  const [openStudent, setOpenStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-
-  const [formData, setFormData] = useState({
+  const [formStudent, setFormStudent] = useState({
     name: "",
     matricula: "",
-    carrera: "",
-    correo: "",
-    celular: "",
-    hora: "",
     projectId: "",
     organizationId: "",
+    correo: "",
+    telefono: "",
+    registeredAt: "",
   });
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  const [openProject, setOpenProject] = useState(false);
+  const [formProject, setFormProject] = useState({
+    name: "",
+    description: "",
+    rules: "",
+    capacity: "",
+    registered: 0,
+    checkedIn: 0,
+    organization: "",
+  });
 
-  const fetchAll = async () => {
-    try {
-      const studentsRes = await fetch(`${API_BASE}/students`);
-      const projectsRes = await fetch(`${API_BASE}/projects`);
-      const orgsRes = await fetch(`${API_BASE}/organizations`);
+  const [openOrg, setOpenOrg] = useState(false);
+  const [formOrg, setFormOrg] = useState({
+    name: "",
+    createdAt: "",
+  });
 
-      const studentsData = await studentsRes.json();
-      const projectsData = await projectsRes.json();
-      const orgsData = await orgsRes.json();
-
-      setStudents(studentsData);
-      setProjects(projectsData);
-      setOrganizations(orgsData);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-  };
-
-  const handleOpen = (student = null) => {
+  // --- Estudiantes ---
+  const handleOpenStudent = (student = null) => {
     if (student) {
       setEditingStudent(student);
-      setFormData(student);
+      setFormStudent({ ...student });
     } else {
       setEditingStudent(null);
-      setFormData({
+      setFormStudent({
         name: "",
         matricula: "",
-        carrera: "",
-        correo: "",
-        celular: "",
-        hora: "",
         projectId: "",
         organizationId: "",
+        correo: "",
+        telefono: "",
+        registeredAt: "",
       });
     }
-    setOpen(true);
+    setOpenStudent(true);
   };
 
-  const handleSave = async () => {
-    try {
-      if (editingStudent) {
-        await fetch(`${API_BASE}/students/${editingStudent.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-      } else {
-        await fetch(`${API_BASE}/students`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-      }
-
-      setOpen(false);
-      fetchAll();
-    } catch (error) {
-      console.error("Error saving student:", error);
+  const handleSaveStudent = () => {
+    if (editingStudent) {
+      setStudents((prev) =>
+        prev.map((s) => (s.id === editingStudent.id ? { ...s, ...formStudent } : s))
+      );
+    } else {
+      const newStudent = {
+        id: students.length + 1,
+        ...formStudent,
+      };
+      setStudents((prev) => [...prev, newStudent]);
     }
+    setOpenStudent(false);
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`${API_BASE}/students/${id}`, {
-        method: "DELETE",
-      });
-      fetchAll();
-    } catch (error) {
-      console.error("Error deleting student:", error);
-    }
+  const handleDeleteStudent = (id) => {
+    setStudents((prev) => prev.filter((s) => s.id !== id));
   };
 
+  // --- Proyectos ---
+  const handleSaveProject = () => {
+    const newProject = {
+      ...formProject,
+      id: projects.length + 1,
+    };
+    setProjects((prev) => [...prev, newProject]);
+    setOpenProject(false);
+    setFormProject({
+      name: "",
+      description: "",
+      rules: "",
+      capacity: "",
+      registered: 0,
+      checkedIn: 0,
+      organization: "",
+    });
+  };
+
+  // --- Organizaciones ---
+  const handleSaveOrg = () => {
+    const newOrg = {
+      id: organizations.length + 1,
+      name: formOrg.name,
+      created_at: formOrg.createdAt,
+    };
+    setOrganizations((prev) => [...prev, newOrg]);
+    setOpenOrg(false);
+    setFormOrg({ name: "", createdAt: "" });
+  };
+
+  // --- Filtros ---
   const filteredStudents = students
     .filter(
       (s) =>
         s.name?.toLowerCase().includes(search.toLowerCase()) ||
         s.matricula?.includes(search)
     )
-    .filter((s) =>
-      filterProject ? s.projectId === filterProject : true
-    )
-    .filter((s) =>
-      filterOrg ? s.organizationId === filterOrg : true
-    );
+    .filter((s) => (filterProject ? s.projectId === filterProject : true))
+    .filter((s) => (filterOrg ? s.organizationId === filterOrg : true));
 
   return (
     <Box p={4}>
       <Typography variant="h4" mb={3}>
-        Admin Panel
+        Panel de Administración
       </Typography>
 
-      {/* Filters */}
+      {/* Botones de agregar proyecto y organización */}
+      <Box display="flex" gap={2} mb={3}>
+        <Button variant="contained" onClick={() => setOpenProject(true)}>
+          + Agregar Proyecto
+        </Button>
+        <Button variant="contained" onClick={() => setOpenOrg(true)}>
+          + Agregar Organización
+        </Button>
+      </Box>
+
+      {/* Filtros */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" gap={2}>
           <TextField
-            label="Buscar"
+            label="Buscar estudiante"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -179,13 +226,13 @@ const AdminEdit = () => {
             ))}
           </Select>
 
-          <Button variant="contained" onClick={() => handleOpen()}>
-            + Add Student
+          <Button variant="contained" onClick={() => handleOpenStudent()}>
+            + Agregar Estudiante
           </Button>
         </Box>
       </Paper>
 
-      {/* Table */}
+      {/* Tabla de estudiantes */}
       <Paper>
         <Table>
           <TableHead>
@@ -194,28 +241,26 @@ const AdminEdit = () => {
               <TableCell>Matrícula</TableCell>
               <TableCell>Proyecto</TableCell>
               <TableCell>Organización</TableCell>
+              <TableCell>Correo</TableCell>
+              <TableCell>Teléfono</TableCell>
+              <TableCell>Hora de Registro</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHead>
-
           <TableBody>
             {filteredStudents.map((s) => (
               <TableRow key={s.id}>
                 <TableCell>{s.name}</TableCell>
                 <TableCell>{s.matricula}</TableCell>
+                <TableCell>{projects.find((p) => p.id === s.projectId)?.name}</TableCell>
+                <TableCell>{organizations.find((o) => o.id === s.organizationId)?.name}</TableCell>
+                <TableCell>{s.correo}</TableCell>
+                <TableCell>{s.telefono}</TableCell>
+                <TableCell>{s.registeredAt}</TableCell>
                 <TableCell>
-                  {projects.find((p) => p.id === s.projectId)?.name}
-                </TableCell>
-                <TableCell>
-                  {organizations.find((o) => o.id === s.organizationId)?.name}
-                </TableCell>
-                <TableCell>
-                  <Button onClick={() => handleOpen(s)}>Edit</Button>
-                  <Button
-                    color="error"
-                    onClick={() => handleDelete(s.id)}
-                  >
-                    Delete
+                  <Button onClick={() => handleOpenStudent(s)}>Editar</Button>
+                  <Button color="error" onClick={() => handleDeleteStudent(s.id)}>
+                    Borrar
                   </Button>
                 </TableCell>
               </TableRow>
@@ -224,34 +269,40 @@ const AdminEdit = () => {
         </Table>
       </Paper>
 
-      {/* Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>
-          {editingStudent ? "Edit Student" : "Add Student"}
-        </DialogTitle>
-
+      {/* Dialog Estudiante */}
+      <Dialog open={openStudent} onClose={() => setOpenStudent(false)}>
+        <DialogTitle>{editingStudent ? "Editar Estudiante" : "Agregar Estudiante"}</DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
           <TextField
             label="Nombre"
-            value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
+            value={formStudent.name}
+            onChange={(e) => setFormStudent({ ...formStudent, name: e.target.value })}
           />
-
           <TextField
             label="Matrícula"
-            value={formData.matricula}
-            onChange={(e) =>
-              setFormData({ ...formData, matricula: e.target.value })
-            }
+            value={formStudent.matricula}
+            onChange={(e) => setFormStudent({ ...formStudent, matricula: e.target.value })}
+          />
+          <TextField
+            label="Correo"
+            value={formStudent.correo}
+            onChange={(e) => setFormStudent({ ...formStudent, correo: e.target.value })}
+          />
+          <TextField
+            label="Teléfono"
+            value={formStudent.telefono}
+            onChange={(e) => setFormStudent({ ...formStudent, telefono: e.target.value })}
+          />
+          <TextField
+            label="Hora de Registro"
+            type="datetime-local"
+            value={formStudent.registeredAt}
+            onChange={(e) => setFormStudent({ ...formStudent, registeredAt: e.target.value })}
           />
 
           <Select
-            value={formData.projectId}
-            onChange={(e) =>
-              setFormData({ ...formData, projectId: e.target.value })
-            }
+            value={formStudent.projectId}
+            onChange={(e) => setFormStudent({ ...formStudent, projectId: e.target.value })}
           >
             {projects.map((p) => (
               <MenuItem key={p.id} value={p.id}>
@@ -261,10 +312,8 @@ const AdminEdit = () => {
           </Select>
 
           <Select
-            value={formData.organizationId}
-            onChange={(e) =>
-              setFormData({ ...formData, organizationId: e.target.value })
-            }
+            value={formStudent.organizationId}
+            onChange={(e) => setFormStudent({ ...formStudent, organizationId: e.target.value })}
           >
             {organizations.map((o) => (
               <MenuItem key={o.id} value={o.id}>
@@ -273,11 +322,78 @@ const AdminEdit = () => {
             ))}
           </Select>
         </DialogContent>
-
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave}>
-            Save
+          <Button onClick={() => setOpenStudent(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveStudent}>
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Proyecto */}
+      <Dialog open={openProject} onClose={() => setOpenProject(false)}>
+        <DialogTitle>Agregar Proyecto</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+          <TextField
+            label="Nombre Proyecto"
+            value={formProject.name}
+            onChange={(e) => setFormProject({ ...formProject, name: e.target.value })}
+          />
+          <TextField
+            label="Descripción"
+            value={formProject.description}
+            onChange={(e) => setFormProject({ ...formProject, description: e.target.value })}
+          />
+          <TextField
+            label="Reglas"
+            value={formProject.rules}
+            onChange={(e) => setFormProject({ ...formProject, rules: e.target.value })}
+          />
+          <TextField
+            label="Capacidad"
+            type="number"
+            value={formProject.capacity}
+            onChange={(e) => setFormProject({ ...formProject, capacity: e.target.value })}
+          />
+          <Select
+            value={formProject.organization}
+            onChange={(e) => setFormProject({ ...formProject, organization: e.target.value })}
+          >
+            {organizations.map((o) => (
+              <MenuItem key={o.id} value={o.name}>
+                {o.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenProject(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveProject}>
+            Guardar Proyecto
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Organización */}
+      <Dialog open={openOrg} onClose={() => setOpenOrg(false)}>
+        <DialogTitle>Agregar Organización</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+          <TextField
+            label="Nombre Organización"
+            value={formOrg.name}
+            onChange={(e) => setFormOrg({ ...formOrg, name: e.target.value })}
+          />
+          <TextField
+            label="Fecha de Creación"
+            type="date"
+            value={formOrg.createdAt}
+            onChange={(e) => setFormOrg({ ...formOrg, createdAt: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenOrg(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveOrg}>
+            Guardar Organización
           </Button>
         </DialogActions>
       </Dialog>

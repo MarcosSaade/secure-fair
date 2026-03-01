@@ -4,7 +4,6 @@
 //  of the event (number of registered students, number of check-ins, etc.)
 // Main page of admin
 // Contains: import, export, edit, check-in, profile and statistics dashboard
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -51,6 +50,8 @@ const MainPage = () => {
   const handleCheckIn = () => navigate("/admin/check-in");
   const handleProfile = () => navigate("/admin/profile");
   const handleEdit = () => navigate("/admin/edit");
+  //const handleEditProject = () => navigate("/admin/editProject");
+  const handleEditOrganization = () => navigate("/admin/editOrganization");
 
   const handleImport = () => {
     console.log("Importing data...");
@@ -60,16 +61,21 @@ const MainPage = () => {
     console.log("Exporting data...");
   };
 
+  const handleOrgChange = (e) => {
+    setSelectedOrg(e.target.value);
+    setSelectedProject("");
+  };
+
   return (
     <Box sx={{ p: 4, backgroundColor: "#f5f7fa", minHeight: "100vh" }}>
       
       {/* HEADER */}
       <Typography variant="h4" fontWeight="bold" gutterBottom>
-        Admin Dashboard
+        Dashboard de Administración
       </Typography>
 
       <Typography variant="body1" color="text.secondary">
-        Manage your event and monitor statistics in real time.
+        Utiliza los botones a continuación para gestionar el evento, revisar estadísticas y administrar proyectos.
       </Typography>
 
       {/* ACTION BUTTONS */}
@@ -77,37 +83,46 @@ const MainPage = () => {
         <Button variant="contained" onClick={handleCheckIn}>
           Check-In
         </Button>
+
         <Button variant="contained" color="secondary" onClick={handleProfile}>
-          Profile
+          Perfil Admin
         </Button>
+
+        {/* CRUD */}
         <Button variant="contained" color="success" onClick={handleEdit}>
-          Edit Management
+          Editar Estudiantes
         </Button>
+
+
+        <Button variant="contained" color="info" onClick={handleEditOrganization}>
+          Editar Proyectos
+        </Button>
+
         <Button variant="outlined" onClick={handleImport}>
-          Import Data
+          Importar Datos
         </Button>
+
         <Button variant="outlined" onClick={handleExport}>
-          Export Data
+          Exportar Datos
         </Button>
       </Box>
 
       {/* FILTER SECTION */}
       <Paper sx={{ mt: 5, p: 3, borderRadius: 3 }} elevation={3}>
         <Typography variant="h6" gutterBottom>
-          Filter by Organization and Project
+          Filtrar por organización y proyecto
         </Typography>
 
         <Grid container spacing={2}>
+
+          {/* Organization Selector */}
           <Grid item xs={12} md={6}>
             <TextField
               select
               label="Organization"
               fullWidth
               value={selectedOrg}
-              onChange={(e) => {
-                setSelectedOrg(e.target.value);
-                setSelectedProject("");
-              }}
+              onChange={handleOrgChange}
             >
               {organizaciones.map((org) => (
                 <MenuItem key={org} value={org}>
@@ -117,6 +132,7 @@ const MainPage = () => {
             </TextField>
           </Grid>
 
+          {/* Project Selector */}
           <Grid item xs={12} md={6}>
             <TextField
               select
@@ -134,21 +150,23 @@ const MainPage = () => {
                 ))}
             </TextField>
           </Grid>
+
         </Grid>
       </Paper>
 
       {/* STATISTICS DASHBOARD */}
       <Box sx={{ mt: 5 }}>
         <Typography variant="h6" gutterBottom>
-          Event Statistics
+          Estadísticas del Evento
         </Typography>
 
         <Grid container spacing={3}>
+
           <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
               <Typography variant="h5">150</Typography>
               <Typography color="text.secondary">
-                Registered Students
+                Estudiantes Registrados
               </Typography>
             </Paper>
           </Grid>
@@ -166,10 +184,11 @@ const MainPage = () => {
             <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
               <Typography variant="h5">8</Typography>
               <Typography color="text.secondary">
-                Projects
+                Proyectos
               </Typography>
             </Paper>
           </Grid>
+
         </Grid>
       </Box>
 
