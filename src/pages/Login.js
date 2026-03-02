@@ -10,8 +10,8 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { users } from './users';
+import { organizations } from './organization';
 import logo from './Logo.png';
-
 
 const Login = () => {
   const navigate = useNavigate();
@@ -27,7 +27,6 @@ const Login = () => {
     if (!username.trim()) return setError('Ingresa tu username');
     if (!password) return setError('Ingresa tu contraseña');
 
-    //  Buscar usuario en base dummy
     const userFound = users.find(
       (user) =>
         user.username === username &&
@@ -38,12 +37,24 @@ const Login = () => {
       return setError('Credenciales incorrectas');
     }
 
-    // Guardamos sesión
+    // Guardar sesión básica
     sessionStorage.setItem('username', userFound.username);
-    sessionStorage.setItem('role', userFound.role);
+    sessionStorage.setItem('type', userFound.type);
 
-    //  Redirección dinámica según rol
-    navigate(`/${userFound.role}`);
+    // 🔹 Si es socio-formador, buscar organización
+    if (userFound.type === 'socio') {
+      const orgFound = organizations[userFound.username];
+
+      if (orgFound) {
+        sessionStorage.setItem(
+          'organization',
+          JSON.stringify(orgFound)
+        );
+      }
+    }
+
+    // Redirección dinámica
+    navigate(`/${userFound.type}`);
   };
 
   return (

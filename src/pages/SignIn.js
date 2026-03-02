@@ -6,10 +6,7 @@ import {
   Paper,
   TextField,
   Button,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
-  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import logo from './Logo.png';
@@ -17,35 +14,9 @@ import logo from './Logo.png';
 const SignIn = () => {
   const navigate = useNavigate();
 
-  const [role, setRole] = useState(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
-  const handleRoleChange = (event, newRole) => {
-    setRole(newRole);
-    setError('');
-  };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setError('');
-
-    if (!role) return setError('Selecciona un rol');
-    if (!username.trim()) return setError('Username requerido');
-    if (!password) return setError('Password requerido');
-
-    sessionStorage.setItem('selectedRole', role);
-    sessionStorage.setItem('username', username);
-
-    if (role === 'student') {
-      navigate('/student');;
-    } else if (role === 'socio') {
-      navigate('/socio');
-    } else if (role === 'admin') {
-      navigate('/admin');
-    }
-  };
 
   return (
     <Box
@@ -103,45 +74,10 @@ const SignIn = () => {
             color="text.secondary"
             sx={{ mb: 4 }}
           >
-            Crear Cuenta
+            Crea tu cuenta como estudiante. Si eres socio-formador o administrador, por favor, ingresa con tu cuenta existente.
           </Typography>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit}>
-            <Typography
-              variant="subtitle2"
-              fontWeight={600}
-              sx={{ mb: 2 }}
-            >
-              Selecciona tu rol
-            </Typography>
-
-            <ToggleButtonGroup
-              value={role}
-              exclusive
-              onChange={handleRoleChange}
-              fullWidth
-              sx={{
-                mb: 3,
-                '& .MuiToggleButton-root.Mui-selected': {
-                  backgroundColor: '#2479bd',
-                  color: '#fff',
-                  '&:hover': {
-                    backgroundColor: '#1b5f94',
-                  },
-                },
-              }}
-            >
-              <ToggleButton value="student">Estudiante</ToggleButton>
-              <ToggleButton value="socio">Socio-Formador</ToggleButton>
-              <ToggleButton value="admin">Administrador</ToggleButton>
-            </ToggleButtonGroup>
-
+          <Box component="form">
             <TextField
               fullWidth
               label="Username"

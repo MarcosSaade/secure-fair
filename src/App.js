@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 import './App.css';
 
 // ==================== LAYOUTS ====================
@@ -20,8 +20,13 @@ import StudentQR from './pages/student/StudentQR';
 //====================ADMIN PAGES====================
 import AdminMain from './pages/admin/main_page';
 import AdminEdit from './pages/admin/edit';
-import EditProject from "./pages/admin/editProject";
+//import EditProject from "./pages/admin/editProject";
 import EditOrganization from './pages/admin/editOrganization';
+
+//=====================SOCIO-FORMADOR PAGES====================
+import MainSocio from './pages/socio/main_pageSocio';
+import SocioGenerateCode from './pages/socio/generatecode';
+import SocioProfile from './pages/socio/profile';
 
 
 // ==================== CONST ====================
@@ -42,14 +47,9 @@ const AdminProfile = () => <Box sx={{ p: 4 }}>Admin Profile</Box>;
 
 
 // ==================== SOCIO-FORMADOR PAGES ====================
-const SocioDashboard = () => (
-  <Box sx={{ p: 4, textAlign: 'center' }}>
-    <Typography variant="h4">Hello World! 👋</Typography>
-    <Typography variant="body1" sx={{ mt: 2 }}>Welcome, Socio-Formador</Typography>
-  </Box>
-);
-const SocioGenerateCode = () => <Box sx={{ p: 4 }}>Generate Code</Box>;
-const SocioProfile = () => <Box sx={{ p: 4 }}>Socio Profile</Box>;
+
+//const SocioGenerateCode = () => <Box sx={{ p: 4 }}>Generate Code</Box>;
+//const SocioProfile = () => <Box sx={{ p: 4 }}>Socio Profile</Box>;
 
 // ==================== NOT FOUND ====================
 const NotFound = () => <Box sx={{ p: 4 }}>404 - Page Not Found</Box>;
@@ -79,10 +79,12 @@ function App() {
         </Route>
 
         {/* ==================== SOCIO-FORMADOR ROUTES (Nested with SocioLayout) ==================== */}
-        <Route element={<SocioLayout />}>
-          <Route path="/socio" element={<SocioDashboard />} />
-          <Route path="/socio/projects/:project_id/code" element={<SocioGenerateCode />} />
-          <Route path="/socio/profile" element={<SocioProfile />} />
+        <Route path="/socio/*" element={<SocioLayout />}>
+           <Route index element={<MainSocio />} />
+          <Route path="main_pageSocio" element={<MainSocio />} />
+          <Route index element={<SocioGenerateCode />} />
+          <Route path="generatecode" element={<SocioGenerateCode />} />
+          <Route path="profile" element={<SocioProfile />} />
         </Route>
 
         {/* ==================== ADMIN ROUTES (Nested with AdminLayout) ==================== */}
@@ -91,11 +93,10 @@ function App() {
           <Route path="main_page" element={<AdminMain />} />
          
           <Route path="edit" element={<AdminEdit />} />
-        
-          <Route path="editProject" element={<EditProject/>} />
+  
 
           <Route path="editOrganization" element={<EditOrganization />} />
-          
+
           <Route path="import" element={<AdminImport />} />
           <Route path="export" element={<AdminExport />} />
           <Route path="checkin" element={<AdminCheckIn />} />
