@@ -27,7 +27,7 @@ const Login = () => {
     if (!username.trim()) return setError('Ingresa tu username');
     if (!password) return setError('Ingresa tu contraseña');
 
-    // 🔎 Buscar usuario en base dummy
+    // Buscar usuario en base dummy
     const userFound = users.find(
       (user) =>
         user.username === username &&
@@ -42,7 +42,7 @@ const Login = () => {
     sessionStorage.setItem('username', userFound.username);
     sessionStorage.setItem('role', userFound.role);
 
-    // 🔥 Redirección dinámica según rol
+    // Redirección dinámica según rol
     navigate(`/${userFound.role}`);
   };
 

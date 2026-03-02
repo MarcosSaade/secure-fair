@@ -5,6 +5,7 @@
 /.pnp
 .pnp.js
 /backend/Dummy/Proyectos Verano 202511.xlsx
+
 # testing
 /coverage
 
