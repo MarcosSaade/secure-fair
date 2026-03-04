@@ -41,7 +41,7 @@ const Login = () => {
     sessionStorage.setItem('username', userFound.username);
     sessionStorage.setItem('type', userFound.type);
 
-    // 🔹 Si es socio-formador, buscar organización
+    //  Si es socio-formador, buscar organización
     if (userFound.type === 'socio') {
       const orgFound = organizations[userFound.username];
 
@@ -53,8 +53,12 @@ const Login = () => {
       }
     }
 
-    // Redirección dinámica
-    navigate(`/${userFound.type}`);
+    //  Redirección personalizada
+    if (userFound.type === 'student') {
+      navigate('/student');
+    } else {
+      navigate(`/${userFound.type}`);
+    }
   };
 
   return (

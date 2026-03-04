@@ -17,7 +17,18 @@ const SignIn = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
+    if (!username.trim() || !password.trim()) return;
+
+    // Guardar sesión como estudiante
+    sessionStorage.setItem('username', username);
+    sessionStorage.setItem('type', 'student');
+
+    // Redirigir a student
+    navigate('/student');
+  };
   return (
     <Box
       sx={{
@@ -68,16 +79,25 @@ const SignIn = () => {
             Feria del Servicio Social
           </Typography>
 
-          <Typography
-            variant="body2"
-            align="center"
-            color="text.secondary"
-            sx={{ mb: 4 }}
-          >
-            Crea tu cuenta como estudiante. Si eres socio-formador o administrador, por favor, ingresa con tu cuenta existente.
-          </Typography>
+        <Typography
+          align="center"
+          sx={{ mb: 1, fontWeight: 600 }}
+        >
+          Crea tu cuenta como estudiante.
+        </Typography>
 
-          <Box component="form">
+        <Typography
+          align="center"
+          sx={{
+            mb: 4,
+            fontWeight: 700,
+            color: '#2479bd',
+          }}
+        >
+          Si eres socio-formador o administrador, inicia sesión con tu cuenta existente.
+        </Typography>
+
+          <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
               label="Username"

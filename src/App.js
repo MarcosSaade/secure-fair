@@ -70,8 +70,7 @@ function App() {
         <Route path="/student/*" element={<StudentLayout />}>
           <Route index element={<StudentRegister />} />
           <Route path="register" element={<StudentRegister />} />
-          <Route index element={<StudentQR />} />
-          <Route path = 'qr' element={<StudentQR />} />
+          <Route path="qr" element={<StudentQR />} />
           <Route path="status" element={<StudentRegisterStatus />} />
           <Route path="confirmation" element={<StudentConfirmation />} />
           <Route path="result" element={<StudentResult />} />
