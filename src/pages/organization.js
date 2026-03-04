@@ -3,18 +3,18 @@
 
 export const organizations = [
   {
-    org_id: 2,
-    name_org: "Organización 2",
+    orgID: 1,
+    name_org: "Ampre",
     created_at: "2024-02-20",
   },
   {
-    org_id: 3,
-    name_org: "Organización 3",
+    orgID: 2,
+    name_org: "Escuela Margarita",
     created_at: "2024-03-10",
   },
   {
-    org_id: 4,
-    name_org: "Organización 4",
+    orgID: 3,
+    name_org: "BBVA",
     created_at: "2024-04-05",
   },
 ];

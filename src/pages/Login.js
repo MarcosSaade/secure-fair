@@ -20,6 +20,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
@@ -40,10 +41,13 @@ const Login = () => {
     // Guardar sesión básica
     sessionStorage.setItem('username', userFound.username);
     sessionStorage.setItem('type', userFound.type);
+    sessionStorage.setItem('user', JSON.stringify(userFound));
 
-    //  Si es socio-formador, buscar organización
+    //  Si es socio, usar orgId directamente del user
     if (userFound.type === 'socio') {
-      const orgFound = organizations[userFound.username];
+      const orgFound = Object.values(organizations).find(
+        (org) => org.orgID === userFound.orgID
+      );
 
       if (orgFound) {
         sessionStorage.setItem(
@@ -51,14 +55,18 @@ const Login = () => {
           JSON.stringify(orgFound)
         );
       }
+
+      // Redirección dinámica con ID
+      return navigate(`/socio/main_pageSocio/${userFound.orgID}`);
     }
 
-    //  Redirección personalizada
+    //  Si es estudiante
     if (userFound.type === 'student') {
-      navigate('/student');
-    } else {
-      navigate(`/${userFound.type}`);
+      return navigate('/student');
     }
+
+    //  Otros roles
+    navigate(`/${userFound.type}`);
   };
 
   return (

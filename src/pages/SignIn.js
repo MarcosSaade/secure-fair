@@ -79,23 +79,23 @@ const SignIn = () => {
             Feria del Servicio Social
           </Typography>
 
-        <Typography
-          align="center"
-          sx={{ mb: 1, fontWeight: 600 }}
-        >
-          Crea tu cuenta como estudiante.
-        </Typography>
+      <Typography
+        align="center"
+        sx={{ mb: 1, fontWeight: 600 }}
+      >
+        Crea tu cuenta como estudiante.
+      </Typography>
 
-        <Typography
-          align="center"
-          sx={{
-            mb: 4,
-            fontWeight: 700,
-            color: '#2479bd',
-          }}
-        >
-          Si eres socio-formador o administrador, inicia sesión con tu cuenta existente.
-        </Typography>
+      <Typography
+        align="center"
+        sx={{
+          mb: 4,
+          fontWeight: 700,
+          color: '#2479bd',
+        }}
+      >
+        Si eres socio-formador o administrador, inicia sesión con tu cuenta existente.
+      </Typography>
 
           <Box component="form" onSubmit={handleSubmit}>
             <TextField

@@ -112,7 +112,7 @@ const EditProject = () => {
         >
           <MenuItem value="">Todas</MenuItem>
           {organizations.map((org) => (
-            <MenuItem key={org.org_id} value={org.name_org}>
+            <MenuItem key={org.orgID} value={org.name_org}>
               {org.name_org}
             </MenuItem>
           ))}
@@ -206,7 +206,7 @@ const EditProject = () => {
             }
           >
             {organizations.map((org) => (
-              <MenuItem key={org.org_id} value={org.name_org}>
+              <MenuItem key={org.orgID} value={org.name_org}>
                 {org.name_org}
               </MenuItem>
             ))}

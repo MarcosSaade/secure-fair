@@ -1,0 +1,1049 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+
+\geometry{margin=2cm}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\title{\textbf{Roadmap de Desarrollo y Calendario}\\
+\large Secure Fair: Sistema de Registro para Ferias de Servicio Social}
+\author{Equipo de Desarrollo}
+\date{Febrero 2026}
+
+\begin{document}
+
+\maketitle
+\newpage
+
+\tableofcontents
+\newpage
+
+\section{Organización del Equipo}
+
+\subsection{Estructura del Equipo}
+
+El equipo está compuesto por 5 personas con roles específicos pero con capacidad full-stack:
+
+\begin{enumerate}
+    \item \textbf{Scrum Master / PM / Integrador / QA Lead}
+    \begin{itemize}[leftmargin=*]
+        \item Gestión del backlog y objetivos semanales
+        \item Definición de criterios de aceptación
+        \item Coordinación de integraciones y resolución de conflictos
+        \item Preparación de scripts de demostración
+        \item Configuración de CI/CD y estándares de código
+        \item Checklist de pruebas y control de calidad
+    \end{itemize}
+    
+    \item \textbf{Backend Lead (API + Base de Datos)}
+    \begin{itemize}[leftmargin=*]
+        \item Diseño del esquema de base de datos y migraciones
+        \item Implementación de endpoints REST y reglas de negocio
+        \item Gestión de transacciones y validaciones
+        \item Responsable del entorno de despliegue backend
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto + Auth Engineer}
+    \begin{itemize}[leftmargin=*]
+        \item Implementación de autenticación (JWT/sesiones)
+        \item Control de acceso basado en roles (RBAC)
+        \item Sistema de códigos OTP (generación, hash, expiración)
+        \item Implementación de recibos firmados digitalmente (Ed25519)
+        \item Auditoría de seguridad de endpoints
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead (Aplicaciones de Estudiante y Socioformador)}
+    \begin{itemize}[leftmargin=*]
+        \item Flujo de estudiante: registro de slot, QR, check-in status, redención de código
+        \item Flujo de socioformador: generación de código, contadores en tiempo real, lista de estudiantes
+        \item Componentes UI, enrutamiento, validación de formularios
+        \item Experiencia de usuario (UX)
+    \end{itemize}
+    
+    \item \textbf{Admin Dashboard + Data/Exports Engineer}
+    \begin{itemize}[leftmargin=*]
+        \item Panel administrativo: CRUD de organizaciones/proyectos/slots
+        \item Importación de datos mediante Excel
+        \item Dashboard de analíticas: asistencia por slot, inscripciones, estado de capacidad
+        \item Exportaciones: tabla maestra CSV/XLSX, exportación por proyecto
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Principios de Trabajo}
+
+\begin{itemize}[leftmargin=*]
+    \item Cada miembro es capaz de trabajar en cualquier área (full-stack)
+    \item Cada persona es dueña de un área específica para evitar componentes huérfanos
+    \item Reuniones semanales cortas para sincronización
+    \item Code reviews obligatorios antes de merge
+    \item Documentación continua durante desarrollo
+\end{itemize}
+
+\section{Calendario de 16 Semanas}
+
+\subsection{Estructura del Calendario}
+
+El calendario abarca desde la Semana 2 hasta la Semana 17 (presentación final). La Semana 1 se asume como onboarding e introducción al curso.
+
+\subsection{Hitos Principales}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Semana 3:} Aplicación esqueleto con autenticación
+    \item \textbf{Semana 5:} Registro de slots funcional
+    \item \textbf{Semana 6:} Sistema de check-in operativo
+    \item \textbf{Semana 8:} Inscripción con gate de verificación física
+    \item \textbf{Semana 9:} Milestone de endurecimiento
+    \item \textbf{Semana 10:} Sistema de exportaciones
+    \item \textbf{Semana 12:} Dashboard de analíticas
+    \item \textbf{Semana 13:} Componente criptográfico finalizado
+    \item \textbf{Semana 15:} Despliegue en producción
+    \item \textbf{Semana 16:} Congelación de código
+    \item \textbf{Semana 17:} Presentación final
+\end{itemize}
+
+\section{Calendario Detallado por Semana}
+
+\subsection{Semana 2: Fundamentos}
+
+\subsubsection{Objetivos}
+Establecer la arquitectura base y definir el alcance preciso del MVP.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Definir alcance del MVP y user stories
+        \item Crear criterios de aceptación para cada funcionalidad
+        \item Establecer definition of done
+    \end{itemize}
+    
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Crear diagrama ER inicial
+        \item Definir esqueleto de migraciones con Alembic
+        \item Documentar decisiones de diseño de base de datos
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Diseñar modelo RBAC (roles y permisos)
+        \item Decidir estrategia de autenticación (JWT vs sesiones)
+        \item Investigar bibliotecas crypto (pynacl vs cryptography)
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Definir layout general de la aplicación
+        \item Diseñar rutas para los 3 roles
+        \item Seleccionar biblioteca de componentes (MUI vs shadcn)
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Especificar formatos de exportación (columnas CSV/XLSX)
+        \item Definir estructura de plantilla Excel para importación
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Documento de arquitectura, diagrama ER borrador, lista de endpoints, especificación de formatos de datos.
+
+\subsection{Semana 3: Aplicación Esqueleto}
+
+\subsubsection{Objetivos}
+Tener una aplicación funcional mínima con autenticación y separación por roles.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Configurar proyecto FastAPI con estructura de carpetas
+        \item Configurar conexión a PostgreSQL con SQLAlchemy
+        \item Ejecutar migraciones iniciales (users, roles)
+        \item Crear datos de prueba (seed data)
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Implementar endpoint /auth/login con generación de JWT
+        \item Implementar endpoint /auth/me
+        \item Crear dependencias de FastAPI para verificar roles
+        \item Implementar hashing de contraseñas con Argon2
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Configurar proyecto React con Vite y TypeScript
+        \item Implementar pantallas de login
+        \item Crear rutas protegidas según rol
+        \item Implementar almacenamiento de token JWT
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Crear wireframes básicos de pantallas CRUD de administrador
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Configurar repositorio Git con estructura de branches
+        \item Configurar linting (black, ruff, eslint)
+        \item Establecer reglas de Pull Request
+        \item Definir definition of done para cada task
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Aplicación "Hello World" con login funcional, roles diferenciados, base de datos corriendo.
+
+\subsubsection{Demo Interna}
+Login exitoso, navegación a diferentes vistas según rol.
+
+\subsection{Semana 4: CRUD de Datos Centrales}
+
+\subsubsection{Objetivos}
+Implementar operaciones CRUD para organizaciones, proyectos y slots.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Endpoints CRUD para Organizations
+        \item Endpoints CRUD para Projects
+        \item Endpoints CRUD para Time Slots
+        \item Validaciones de datos (capacidad > 0, fechas coherentes)
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item UI de administrador para CRUD de organizaciones
+        \item UI de administrador para CRUD de proyectos
+        \item UI de administrador para CRUD de slots
+        \item Conectar UI a API backend
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Vista de socioformador: lista de proyectos asignados
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Aplicar verificación de permisos en endpoints (solo ADMIN puede crear)
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Iniciar checklist de testing de integración
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Administrador puede crear org/proyectos/slots; socioformador puede ver sus proyectos.
+
+\subsubsection{Demo Interna}
+Crear organización, proyecto y slot desde panel de admin; visualizar en panel de socio.
+
+\subsection{Semana 5: Registro de Estudiantes a Slots}
+
+\subsubsection{Objetivos}
+Permitir a estudiantes registrarse en franjas horarias con control de capacidad.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Endpoint GET /student/slots (con capacidad disponible)
+        \item Endpoint POST /student/slot-registrations
+        \item Implementar verificación de capacidad en tiempo real
+        \item Restricción de registro único por slot
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Pantalla de estudiante: explorar slots disponibles
+        \item Formulario de registro a slot
+        \item Página de confirmación de registro
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Proteger contra registros duplicados en el mismo slot
+        \item Implementar rate limiting básico
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Vista de administrador: registros de slots
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Definir escenario de demo 1 (flujo de franja horaria)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Estudiantes pueden reservar slots; capacidad se actualiza correctamente.
+
+\subsubsection{Demo Interna}
+Estudiante reserva slot, intenta reservar nuevamente (error), otro estudiante reserva hasta llenar capacidad.
+
+\subsection{Semana 6: Check-in con QR}
+
+\subsubsection{Objetivos}
+Generar códigos QR de entrada y permitir verificación de entrada.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Endpoint GET /student/slot-qr (genera token firmado)
+        \item Endpoint POST /admin/checkin (verifica token y registra check-in)
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Implementar token JWT firmado para QR
+        \item Validación de firma y expiración en check-in
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Pantalla de estudiante: "Mi QR" con visualización
+        \item Pantalla de administrador: escáner/entrada manual de token
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Métricas básicas de asistencia (registrados vs verificados)
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Plan de pruebas para casos edge de check-in
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Check-in funciona; números de asistencia se actualizan.
+
+\subsubsection{Demo Interna}
+Estudiante muestra QR, administrador escanea/ingresa token, verificación exitosa.
+
+\subsection{Semana 7: Códigos OTP de Inscripción}
+
+\subsubsection{Objetivos}
+Socioformadores pueden generar códigos de inscripción efímeros.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Endpoint POST /socio/projects/\{id\}/codes (genera código)
+        \item Lógica de generación de código alfanumérico aleatorio
+        \item Almacenamiento con timestamp de expiración
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Implementar hashing HMAC del código
+        \item Configurar tiempo de expiración (60-120s)
+        \item Verificación de expiración en validación
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item UI de socioformador: botón "Generar Código"
+        \item Mostrar código en pantalla con countdown de expiración
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Vista de administrador: conteo de códigos usados (opcional)
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Definir escenario de demo 2 (flujo de inscripción)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Códigos pueden generarse y validarse.
+
+\subsubsection{Demo Interna}
+Socioformador genera código, código se muestra en pantalla, expira después de 2 minutos.
+
+\subsection{Semana 8: Inscripción con Gate de Verificación}
+
+\subsubsection{Objetivos}
+Estudiantes pueden redimir códigos solo si están verificados físicamente.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Endpoint POST /student/enrollments/redeem
+        \item Implementar transacción atómica completa:
+        \begin{itemize}
+            \item Verificar check-in
+            \item Validar código (hash, expiración, no usado)
+            \item Verificar inscripción única por periodo
+            \item Verificar capacidad disponible
+            \item Crear enrollment
+            \item Marcar código como usado
+        \end{itemize}
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Finalizar enforcement de reglas de negocio
+        \item Implementar logs de auditoría para inscripciones
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Pantalla de estudiante: ingresar código
+        \item Mostrar reglas del proyecto para aceptación
+        \item Confirmación de inscripción exitosa
+        \item Manejo de errores (no verificado, código inválido, etc.)
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Vista de tabla de inscripciones
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Verificación end-to-end del flujo completo
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Inscripción end-to-end funcional, con gate de verificación física.
+
+\subsubsection{Demo Interna}
+Estudiante sin check-in intenta redimir código (falla); estudiante con check-in redime exitosamente; segundo intento de inscripción es bloqueado.
+
+\subsection{Semana 9: Endurecimiento y Edge Cases}
+
+\subsubsection{Objetivos}
+Fortalecer el sistema contra condiciones de carrera y ataques.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Agregar constraints de base de datos (UNIQUE, CHECK)
+        \item Manejar race conditions con SELECT FOR UPDATE
+        \item Optimizar queries con índices
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Implementar protección contra fuerza bruta (limitar intentos de código)
+        \item Rate limiting en endpoints críticos
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Pulir estados de error (capacidad completa, código expirado, no verificado)
+        \item Mensajes de error claros y accionables
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Query de tabla maestra (join student/project/org/period)
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Demo interna de mitad de semestre
+        \item Repriorización del backlog
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Milestone de endurecimiento alcanzado.
+
+\subsubsection{Demo Interna}
+Pruebas de estrés: múltiples estudiantes intentan redimir códigos simultáneamente; sistema mantiene integridad.
+
+\subsection{Semana 10: Exportaciones (CSV/XLSX)}
+
+\subsubsection{Objetivos}
+Implementar sistema de exportación de datos.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Endpoint de exportación por proyecto
+        \item Endpoint de exportación maestra
+        \item Implementar generación de CSV y XLSX
+    \end{itemize}
+    
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Implementar endpoints de exportación con filtros
+        \item Paginación para queries grandes
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Botones de descarga en UI de socioformador
+        \item Botones de descarga en UI de administrador
+        \item Filtros de exportación (por periodo, organización)
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Verificación de autorización para exportaciones
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Checklist de validación de datos exportados
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Exportaciones con un clic para socioformador y administrador.
+
+\subsubsection{Demo Interna}
+Descargar lista de inscritos de un proyecto; descargar tabla maestra completa.
+
+\subsection{Semana 11: Importación de Excel}
+
+\subsubsection{Objetivos}
+Permitir a administradores cargar proyectos masivamente mediante Excel.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Definir plantilla Excel con columnas específicas
+        \item UI de carga de archivo con preview
+        \item Mostrar errores de validación por fila
+    \end{itemize}
+    
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Parser de archivos Excel
+        \item Validación de datos por fila
+        \item Reporte de errores con números de fila
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Restricciones de tamaño y tipo de archivo
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item UI de estado de importación
+        \item Display de errores
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Escenario de demo de importación
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Servicio Social puede cargar org/proyectos/slots de forma masiva y segura.
+
+\subsubsection{Demo Interna}
+Cargar archivo Excel, ver preview, confirmar importación exitosa.
+
+\subsection{Semana 12: Dashboard de Analíticas}
+
+\subsubsection{Objetivos}
+Crear dashboard administrativo con métricas clave y visualizaciones.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Gráficas de asistencia por slot
+        \item Gráficas de inscripciones por proyecto
+        \item Tasas de ocupación
+        \item UI de dashboard con componentes visuales
+    \end{itemize}
+    
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Endpoints de analíticas (agregaciones)
+        \item Optimización de queries para dashboards
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Integrar biblioteca de gráficas (Chart.js, Recharts)
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Verificar acceso solo para administradores
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Definir narrativa de demo final
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Dashboard que luce profesional y se actualiza con datos reales.
+
+\subsubsection{Demo Interna}
+Navegar por dashboard, ver métricas actualizadas en tiempo real.
+
+\subsection{Semana 13: Finalización de Componente Criptográfico}
+
+\subsubsection{Objetivos}
+Completar e integrar el requisito criptográfico del curso.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Implementar firma Ed25519 de recibos de inscripción
+        \item Endpoint de verificación de recibos
+        \item Documentación técnica de implementación crypto
+        \item Documentación de modelo de amenazas
+        \item Explicación de cómo la criptografía mitiga amenazas
+    \end{itemize}
+    
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Integrar generación de recibos en flujo de inscripción
+        \item Almacenar firmas en base de datos
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Mostrar recibo firmado al estudiante tras inscripción
+        \item UI de verificación de recibo (opcional)
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Preparar explicación de crypto para presentación
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Requisito criptográfico cumplido, documentado y demostrable.
+
+\subsubsection{Demo Interna}
+Mostrar recibo con firma, verificar firma, intentar modificar datos (verificación falla).
+
+\subsection{Semana 14: Sprint de QA}
+
+\subsubsection{Objetivos}
+Realizar pruebas exhaustivas y corrección de bugs.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Ejecutar suite completa de pruebas de regresión
+        \item Triage de bugs por prioridad
+    \end{itemize}
+    
+    \item \textbf{Backend Lead:}
+    \begin{itemize}
+        \item Corregir race conditions y bugs de correctitud
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Pulir UX, estados de carga
+        \item Asegurar responsividad básica para móviles
+    \end{itemize}
+    
+    \item \textbf{Security/Crypto:}
+    \begin{itemize}
+        \item Auditoría de endpoints y verificación de permisos
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Verificar correctitud de exportaciones e importaciones
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Release Candidate 1.
+
+\subsubsection{Checklist de QA}
+\begin{itemize}[leftmargin=*]
+    \item Login funciona para los 3 roles
+    \item Registro de slot respeta capacidad
+    \item Check-in valida token correctamente
+    \item Inscripción bloquea sin check-in
+    \item Códigos expiran correctamente
+    \item No se permite doble inscripción
+    \item Exportaciones contienen datos correctos
+    \item Dashboard muestra métricas actualizadas
+    \item Recibos pueden verificarse
+    \item No hay vulnerabilidades críticas
+\end{itemize}
+
+\subsection{Semana 15: Despliegue y Confiabilidad}
+
+\subsubsection{Objetivos}
+Desplegar la aplicación en entorno de staging/producción.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Backend Lead + Security:}
+    \begin{itemize}
+        \item Desplegar backend en Render/Fly.io/Railway
+        \item Configurar variables de entorno
+        \item Configurar backups de base de datos
+    \end{itemize}
+    
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Configurar monitoreo básico
+        \item Cargar dataset de demostración realista
+    \end{itemize}
+    
+    \item \textbf{Frontend Lead:}
+    \begin{itemize}
+        \item Desplegar frontend en Vercel/Netlify
+        \item Configurar dominio (opcional)
+        \item Toggles de modo demo si necesario
+    \end{itemize}
+    
+    \item \textbf{Admin/Data:}
+    \begin{itemize}
+        \item Últimos ajustes de dashboard
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Entorno de staging en vivo con URL accesible.
+
+\subsubsection{Demo Interna}
+Acceder a la aplicación desde navegador, realizar flujo completo end-to-end.
+
+\subsection{Semana 16: Congelación y Preparación de Presentación}
+
+\subsubsection{Objetivos}
+Congelar código y preparar materiales de presentación.
+
+\subsubsection{Tareas por Rol}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{PM/Scrum Master:}
+    \begin{itemize}
+        \item Crear presentación de diapositivas
+        \item Escribir script de demo en vivo
+        \item Asignar partes de presentación a cada miembro
+        \item Grabar video de demo de respaldo (por si falla WiFi)
+    \end{itemize}
+    
+    \item \textbf{Todos:}
+    \begin{itemize}
+        \item Ensayar presentación
+        \item Corregir solo bugs críticos
+        \item Finalizar documentación
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Entregable}
+Producto listo para presentación, script de demo, video de respaldo.
+
+\subsubsection{Code Freeze}
+Temprano en la semana. Solo se permiten correcciones críticas de bugs.
+
+\subsection{Semana 17: Presentación Final}
+
+\subsubsection{Objetivos}
+Presentar el proyecto ante profesores y compañeros.
+
+\subsubsection{Estructura de la Presentación (30 minutos)}
+
+\begin{enumerate}
+    \item \textbf{Introducción (3 min)}
+    \begin{itemize}
+        \item Contexto del problema
+        \item Objetivos del proyecto
+    \end{itemize}
+    
+    \item \textbf{Arquitectura y Diseño (5 min)}
+    \begin{itemize}
+        \item Stack tecnológico
+        \item Diagrama de arquitectura
+        \item Modelo de base de datos
+    \end{itemize}
+    
+    \item \textbf{Demo en Vivo (12 min)}
+    \begin{itemize}
+        \item Flujo de administrador: crear proyecto y slot
+        \item Flujo de estudiante: registrar slot, obtener QR
+        \item Flujo de admin: check-in
+        \item Flujo de socioformador: generar código
+        \item Flujo de estudiante: redimir código (exitoso)
+        \item Intentar inscripción sin check-in (bloqueado)
+        \item Mostrar dashboard de analíticas
+        \item Exportar datos
+    \end{itemize}
+    
+    \item \textbf{Componente Criptográfico (5 min)}
+    \begin{itemize}
+        \item Explicar recibos firmados con Ed25519
+        \item Demostrar verificación de firma
+        \item Explicar modelo de amenazas y mitigaciones
+    \end{itemize}
+    
+    \item \textbf{Conclusión y Aprendizajes (3 min)}
+    \begin{itemize}
+        \item Logros del proyecto
+        \item Desafíos superados
+        \item Posibles extensiones futuras
+    \end{itemize}
+    
+    \item \textbf{Preguntas (2 min)}
+\end{enumerate}
+
+\subsubsection{Video de Respaldo}
+Tener grabado un video de 2-3 minutos mostrando el flujo completo en caso de problemas técnicos.
+
+\section{Asignación de Áreas por Miembro}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lp{10cm}@{}}
+\toprule
+\textbf{Rol} & \textbf{Áreas de Propiedad} \\
+\midrule
+PM/Integrador/QA & 
+\begin{itemize}[leftmargin=*, nosep]
+    \item Backlog y planning
+    \item CI/CD y estándares de código
+    \item Integración de componentes
+    \item Testing y QA
+    \item Presentación y demos
+\end{itemize} \\
+\midrule
+Backend Lead & 
+\begin{itemize}[leftmargin=*, nosep]
+    \item Esquema de base de datos
+    \item Migraciones con Alembic
+    \item Endpoints REST
+    \item Transacciones y lógica de negocio
+    \item Despliegue backend
+\end{itemize} \\
+\midrule
+Security/Crypto & 
+\begin{itemize}[leftmargin=*, nosep]
+    \item Autenticación (JWT)
+    \item RBAC y permisos
+    \item Sistema de códigos OTP
+    \item Recibos firmados (Ed25519)
+    \item Auditoría de seguridad
+\end{itemize} \\
+\midrule
+Frontend Lead & 
+\begin{itemize}[leftmargin=*, nosep]
+    \item Aplicación de estudiante
+    \item Aplicación de socioformador
+    \item Routing y componentes UI
+    \item Integración con API
+    \item UX y responsividad
+\end{itemize} \\
+\midrule
+Admin/Data & 
+\begin{itemize}[leftmargin=*, nosep]
+    \item Panel administrativo (CRUD)
+    \item Dashboard de analíticas
+    \item Sistema de exportaciones
+    \item Importación de Excel
+    \item Visualización de datos
+\end{itemize} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Puntos de Integración}
+
+\subsection{Checkpoints Semanales}
+
+Al final de cada semana:
+
+\begin{itemize}[leftmargin=*]
+    \item Demo interna del progreso
+    \item Merge de branches a rama principal
+    \item Actualización de backlog
+    \item Identificación de bloqueos
+\end{itemize}
+
+\subsection{Puntos Críticos de Integración}
+
+\begin{enumerate}
+    \item \textbf{Semana 3:} Integración de auth frontend-backend
+    \item \textbf{Semana 5:} Integración de registro de slots
+    \item \textbf{Semana 8:} Integración de flujo completo de inscripción
+    \item \textbf{Semana 10:} Integración de exportaciones
+    \item \textbf{Semana 13:} Integración de componente crypto
+\end{enumerate}
+
+\section{Entregables Semanales}
+
+\begin{longtable}{@{}llp{8cm}@{}}
+\toprule
+\textbf{Semana} & \textbf{Milestone} & \textbf{Entregable Clave} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Semana} & \textbf{Milestone} & \textbf{Entregable Clave} \\
+\midrule
+\endhead
+2 & Fundamentos & Documento de arquitectura, diagrama ER, lista de endpoints \\
+3 & Skeleton App & App con login, roles, DB funcional \\
+4 & CRUD Core & Admin CRUD, socio ve proyectos \\
+5 & Slot Registration & Estudiantes reservan slots con capacidad \\
+6 & Check-in & Sistema de verificación QR funcional \\
+7 & OTP Codes & Generación de códigos efímeros \\
+8 & Gated Enrollment & Inscripción con verificación física \\
+9 & Hardening & Constraints, race conditions resueltas \\
+10 & Exports & Exportaciones CSV/XLSX \\
+11 & Excel Import & Importación masiva de proyectos \\
+12 & Analytics & Dashboard con gráficas y métricas \\
+13 & Crypto Feature & Recibos firmados implementados \\
+14 & QA Sprint & Release Candidate 1 \\
+15 & Deployment & App en staging/producción \\
+16 & Freeze & Presentación lista, video de respaldo \\
+17 & Presentation & Demo final exitosa \\
+\bottomrule
+\end{longtable}
+
+\section{Fechas de Demos Internas}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lp{10cm}@{}}
+\toprule
+\textbf{Semana} & \textbf{Demo} \\
+\midrule
+3 & Login y separación por roles \\
+5 & Registro de slot hasta capacidad completa \\
+6 & Check-in con QR \\
+8 & Flujo completo: slot → check-in → código → inscripción \\
+9 & Pruebas de estrés de concurrencia \\
+10 & Exportaciones \\
+12 & Dashboard de analíticas \\
+13 & Verificación de recibos firmados \\
+14 & Suite completa de testing \\
+15 & Demo en entorno de producción \\
+16 & Ensayo de presentación final \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Gestión de Riesgos}
+
+\subsection{Riesgos Identificados}
+
+\begin{enumerate}
+    \item \textbf{Retraso en configuración inicial}
+    \begin{itemize}
+        \item \textit{Mitigación:} Usar Docker Compose para setup rápido
+    \end{itemize}
+    
+    \item \textbf{Complejidad de transacciones}
+    \begin{itemize}
+        \item \textit{Mitigación:} Dedicar Semana 9 específicamente a endurecimiento
+    \end{itemize}
+    
+    \item \textbf{Problemas de integración}
+    \begin{itemize}
+        \item \textit{Mitigación:} Checkpoints de integración semanales
+    \end{itemize}
+    
+    \item \textbf{Componente crypto mal entendido}
+    \begin{itemize}
+        \item \textit{Mitigación:} Investigación temprana en Semana 2, implementación gradual
+    \end{itemize}
+    
+    \item \textbf{Falla técnica durante presentación}
+    \begin{itemize}
+        \item \textit{Mitigación:} Video de respaldo grabado
+    \end{itemize}
+\end{enumerate}
+
+\section{Criterios de Éxito}
+
+\subsection{Técnicos}
+
+\begin{itemize}[leftmargin=*]
+    \item Sistema previene inscripciones sin check-in: 100\%
+    \item Límites de capacidad respetados: 100\%
+    \item Códigos expiran correctamente: 100\%
+    \item Recibos verifican correctamente: 100\%
+    \item Cobertura de pruebas: > 70\%
+    \item Cero vulnerabilidades críticas
+\end{itemize}
+
+\subsection{De Proceso}
+
+\begin{itemize}[leftmargin=*]
+    \item Todos los milestones semanales completados a tiempo
+    \item Code reviews realizados en todos los PRs
+    \item Documentación técnica completa
+    \item Demo final sin errores críticos
+\end{itemize}
+
+\subsection{Académicos}
+
+\begin{itemize}[leftmargin=*]
+    \item Presentación clara del componente criptográfico
+    \item Demostración del problema resuelto
+    \item Código fuente bien estructurado
+    \item Capacidad de responder preguntas técnicas
+\end{itemize}
+
+\section{Conclusión}
+
+Este roadmap proporciona una guía estructurada para completar el proyecto en 16 semanas. La distribución de tareas por roles asegura que cada área tenga un responsable claro, mientras que los checkpoints semanales permiten identificar y resolver problemas tempranamente. El enfoque incremental, construyendo funcionalidad semana a semana, reduce el riesgo de llegar a la presentación final con un sistema incompleto o no integrado.
+
+La congelación de código en la Semana 16 permite dedicar tiempo exclusivo a la preparación de la presentación, aumentando significativamente las probabilidades de una demo exitosa. El video de respaldo proporciona una red de seguridad adicional.
+
+Con disciplina en el seguimiento del calendario, comunicación constante entre miembros del equipo, y enfoque en los milestones definidos, el proyecto tiene altas probabilidades de éxito tanto en su implementación técnica como en su evaluación académica.
+
+\end{document}

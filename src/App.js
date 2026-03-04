@@ -79,13 +79,11 @@ function App() {
 
         {/* ==================== SOCIO-FORMADOR ROUTES (Nested with SocioLayout) ==================== */}
         <Route path="/socio/*" element={<SocioLayout />}>
-           <Route index element={<MainSocio />} />
-          <Route path="main_pageSocio" element={<MainSocio />} />
-          <Route index element={<SocioGenerateCode />} />
+          <Route index element={<MainSocio />} />
+          <Route path="main_pageSocio/:orgId" element={<MainSocio />} />
           <Route path="generatecode" element={<SocioGenerateCode />} />
           <Route path="profile" element={<SocioProfile />} />
         </Route>
-
         {/* ==================== ADMIN ROUTES (Nested with AdminLayout) ==================== */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminMain />} />
@@ -93,7 +91,6 @@ function App() {
          
           <Route path="edit" element={<AdminEdit />} />
   
-
           <Route path="editOrganization" element={<EditOrganization />} />
 
           <Route path="import" element={<AdminImport />} />

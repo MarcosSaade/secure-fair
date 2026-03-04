@@ -38,7 +38,7 @@ const AdminEdit = () => {
       name: s.nombre,
       matricula: s.matricula,
       projectId: s.project_id,
-      organizationId: s.org_id,
+      organizationId: s.orgID,
       correo: s.correo,
       telefono: s.telefono,
       registeredAt: s.registered_at,
@@ -56,7 +56,7 @@ const AdminEdit = () => {
   const [organizations, setOrganizations] = useState(
     Object.values(orgsData).map((o) => ({
       ...o,
-      id: o.org_id,
+      id: o.orgID,
       name: o.name_org,
     }))
   );

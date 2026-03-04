@@ -47,7 +47,7 @@ export default function EditOrganization() {
   //  FILTRO
   const filteredProjects = projectList.filter((project) => {
     return (
-      (selectedOrg === "" || project.org_id === Number(selectedOrg)) &&
+      (selectedOrg === "" || project.orgID === Number(selectedOrg)) &&
       (selectedProject === "" || project.name === selectedProject)
     );
   });
@@ -56,7 +56,7 @@ export default function EditOrganization() {
   const handleAddProject = () => {
     setEditingId(null);
     setFormData({
-      org_id: "",
+      orgID: "",
       name: "",
       description: "",
       rules: "",
@@ -79,7 +79,7 @@ export default function EditOrganization() {
 
   //  GUARDAR PROYECTO
   const handleSaveProject = () => {
-    if (!formData.name || !formData.org_id) return;
+    if (!formData.name || !formData.orgID) return;
 
     if (editingId) {
       setProjectList(
@@ -93,7 +93,7 @@ export default function EditOrganization() {
         {
           ...formData,
           project_id: Date.now(),
-          org_id: Number(formData.org_id),
+          orgID: Number(formData.orgID),
         },
       ]);
     }
@@ -124,7 +124,7 @@ export default function EditOrganization() {
       flex: 1,
       renderCell: (params) => {
         const org = orgList.find(
-          (o) => o.org_id === params.row.org_id
+          (o) => o.orgID === params.row.orgID
         );
         return org ? org.name_org : "";
       },
@@ -176,7 +176,7 @@ export default function EditOrganization() {
           >
             <MenuItem value="">Todas</MenuItem>
             {orgList.map((org) => (
-              <MenuItem key={org.org_id} value={org.org_id}>
+              <MenuItem key={org.orgID} value={org.orgID}>
                 {org.name_org}
               </MenuItem>
             ))}

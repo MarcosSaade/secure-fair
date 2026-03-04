@@ -1,4 +1,8 @@
-# Frontend - Secure Fair
+# Secure Fair
+
+Frontend and Backend for the Secure Fair system - Social Service Fair Registration System.
+
+## Frontend - React Application
 
 React + TypeScript frontend for the Secure Fair system.
 

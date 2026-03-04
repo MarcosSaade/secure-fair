@@ -9,7 +9,7 @@ export const students = {
         correo: 'juan.perez@example.com',
         telefono: '555-1234',
         project_id: 1,
-        org_id: 1,
+        orgID: 1,
         registered_at: '2024-01-15',
         checked_in_at: null
     },
@@ -20,7 +20,7 @@ export const students = {
         correo: 'maria.lopez@example.com',
         telefono: '555-5678',
         project_id: 2,
-        org_id: 2,
+        orgID: 2,
         registered_at: '2024-02-20',
         checked_in_at: null
     },
@@ -31,7 +31,7 @@ export const students = {
         correo: 'carlos.garcia@example.com',
         telefono: '555-9012',
         project_id: 3,
-        org_id: 3,
+        orgID: 3,
         registered_at: '2024-03-10',
         checked_in_at: null
     },
@@ -42,7 +42,7 @@ export const students = {
         correo: 'ana.martinez@example.com',
         telefono: '555-3456',
         project_id: 4,
-        org_id: 4,
+        orgID: 4,
         registered_at: '2024-04-05',
         checked_in_at: null
     }

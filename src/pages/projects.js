@@ -12,7 +12,7 @@ export const projects = [
     capacity: 2,
     registered: 30,
     checkedIn: 20,
-    org_id: 2
+    orgID: 2
   },
   {
     project_id: 2,
@@ -22,7 +22,7 @@ export const projects = [
     capacity: 40,
     registered: 25,
     checkedIn: 15,
-    org_id: 2
+    orgID: 2
   },
   {
     project_id: 3,
@@ -32,17 +32,17 @@ export const projects = [
     capacity: 60,
     registered: 45,
     checkedIn: 30,
-    org_id: 3
+    orgID: 3
   },
   {
     project_id: 4,
     name: "Project D",
     description: "Descripción del Proyecto D",
     rules: "Reglas del Proyecto D",
-    capacity: 30,
+    capacity: 1,
     registered: 20,
     checkedIn: 10,
-    org_id: 4
+    orgID: 1
   }
 ];
 
