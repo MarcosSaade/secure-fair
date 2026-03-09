@@ -7,66 +7,64 @@ import {
   Button,
   Typography,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { users } from './users';
-import { organizations } from './organization';
 import logo from './Logo.png';
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const Login = () => {
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!username.trim()) return setError('Ingresa tu username');
+    if (!email.trim()) return setError('Ingresa tu correo');
     if (!password) return setError('Ingresa tu contraseña');
 
-    const userFound = users.find(
-      (user) =>
-        user.username === username &&
-        user.password === password
-    );
+    setLoading(true);
+    try {
+      // Authenticate against the real backend
+      const tokenRes = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email: email.trim(),
+        password,
+      });
+      const { access_token } = tokenRes.data;
 
-    if (!userFound) {
-      return setError('Credenciales incorrectas');
-    }
+      // Store JWT token
+      localStorage.setItem('access_token', access_token);
 
-    // Guardar sesión básica
-    sessionStorage.setItem('username', userFound.username);
-    sessionStorage.setItem('type', userFound.type);
-    sessionStorage.setItem('user', JSON.stringify(userFound));
+      // Fetch user profile to determine role
+      const meRes = await axios.get(`${API_BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      const user = meRes.data;
+      localStorage.setItem('user', JSON.stringify(user));
 
-    //  Si es socio, usar orgId directamente del user
-    if (userFound.type === 'socio') {
-      const orgFound = Object.values(organizations).find(
-        (org) => org.orgID === userFound.orgID
-      );
-
-      if (orgFound) {
-        sessionStorage.setItem(
-          'organization',
-          JSON.stringify(orgFound)
-        );
+      // Navigate based on role
+      if (user.role === 'ADMIN') {
+        navigate('/admin');
+      } else if (user.role === 'SOCIO') {
+        navigate('/socio');
+      } else if (user.role === 'STUDENT') {
+        navigate('/student');
+      } else {
+        navigate('/');
       }
-
-      // Redirección dinámica con ID
-      return navigate(`/socio/main_pageSocio/${userFound.orgID}`);
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.message || 'Error al iniciar sesión';
+      setError(detail);
+    } finally {
+      setLoading(false);
     }
-
-    //  Si es estudiante
-    if (userFound.type === 'student') {
-      return navigate('/student');
-    }
-
-    //  Otros roles
-    navigate(`/${userFound.type}`);
   };
 
   return (
@@ -108,10 +106,12 @@ const Login = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              label="Correo electrónico"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               margin="normal"
+              autoComplete="email"
             />
 
             <TextField
@@ -122,6 +122,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               margin="normal"
               sx={{ mb: 3 }}
+              autoComplete="current-password"
             />
 
             <Button
@@ -129,6 +130,7 @@ const Login = () => {
               fullWidth
               variant="contained"
               size="large"
+              disabled={loading}
               sx={{
                 backgroundColor: '#2479bd',
                 borderRadius: 2,
@@ -139,7 +141,7 @@ const Login = () => {
                 },
               }}
             >
-              Entrar
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Entrar'}
             </Button>
           </Box>
         </Paper>

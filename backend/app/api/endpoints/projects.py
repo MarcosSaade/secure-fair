@@ -2,13 +2,16 @@
 Project endpoints for Secure Fair.
 ADMIN and SOCIO role management for projects.
 """
-from typing import List
+from typing import List, Optional
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.models import Project, Organization, Socio, User, UserRole
+from app.models.models import Project, Organization, Socio, User, UserRole, TimeSlot, EnrollmentCode, SlotStatus
 from app.core.dependencies import get_current_admin, get_current_socio, get_current_user
+from app.core.config import settings
+from app.services.crypto_service import crypto_service
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -281,3 +284,155 @@ async def delete_project(
     db.commit()
     
     return None
+
+
+# ==================== TIME SLOT ENDPOINTS ====================
+
+class TimeSlotCreate(BaseModel):
+    """Schema for creating a time slot."""
+    start_time: datetime
+    end_time: datetime
+    capacity: int = Field(default=30, ge=1, le=500)
+
+
+class TimeSlotResponse(BaseModel):
+    """Schema for time slot response."""
+    id: int
+    project_id: int
+    start_time: datetime
+    end_time: datetime
+    capacity: int
+    current_enrollments: int
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+@router.post(
+    "/{project_id}/slots",
+    response_model=TimeSlotResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Time Slot",
+)
+@limiter.limit("30/minute")
+async def create_time_slot(
+    request: Request,
+    project_id: int,
+    slot_data: TimeSlotCreate,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    """Create a new time slot for a project. **ADMIN ONLY**."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if slot_data.end_time <= slot_data.start_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_time must be after start_time",
+        )
+
+    slot = TimeSlot(
+        project_id=project_id,
+        start_time=slot_data.start_time,
+        end_time=slot_data.end_time,
+        capacity=slot_data.capacity,
+        current_enrollments=0,
+        status=SlotStatus.ACTIVE,
+    )
+    db.add(slot)
+    db.commit()
+    db.refresh(slot)
+    return slot
+
+
+@router.get("/{project_id}/slots", response_model=List[TimeSlotResponse], summary="List Time Slots")
+@limiter.limit("100/minute")
+async def list_time_slots(
+    request: Request,
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all active time slots for a project. Any authenticated user can view."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    slots = (
+        db.query(TimeSlot)
+        .filter(TimeSlot.project_id == project_id, TimeSlot.status != SlotStatus.CANCELLED)
+        .order_by(TimeSlot.start_time)
+        .all()
+    )
+    return slots
+
+
+# ==================== ENROLLMENT CODE ENDPOINT ====================
+
+class EnrollmentCodeResponse(BaseModel):
+    """Schema for enrollment code response (plaintext shown once)."""
+    code: str
+    project_id: int
+    expires_at: datetime
+    expires_in_seconds: int
+
+
+@router.post(
+    "/{project_id}/codes",
+    response_model=EnrollmentCodeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate Enrollment Code",
+)
+@limiter.limit("30/minute")
+async def generate_enrollment_code(
+    request: Request,
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_socio: User = Depends(get_current_socio),
+):
+    """
+    Generate a one-time enrollment code for a project.
+
+    **SOCIO ONLY** - The socio must be associated with the project's organization.
+
+    Codes are:
+    - Random 6-character alphanumeric strings
+    - HMAC-SHA256 hashed before storage (plaintext never stored)
+    - Valid for 120 seconds (configurable)
+    - Single-use
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    # Verify the socio belongs to this project's organization
+    socio = db.query(Socio).filter(Socio.user_id == current_socio.id).first()
+    if not socio or socio.organization_id != project.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to generate codes for this project",
+        )
+
+    # Generate code
+    plaintext_code = crypto_service.generate_enrollment_code()
+    code_hash = crypto_service.hash_enrollment_code(plaintext_code)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=settings.ENROLLMENT_CODE_EXPIRE_SECONDS)
+
+    enrollment_code = EnrollmentCode(
+        project_id=project_id,
+        code_hash=code_hash,
+        expires_at=expires_at,
+        is_used=False,
+        created_by_socio_id=socio.id,
+    )
+    db.add(enrollment_code)
+    db.commit()
+
+    return EnrollmentCodeResponse(
+        code=plaintext_code,
+        project_id=project_id,
+        expires_at=expires_at,
+        expires_in_seconds=settings.ENROLLMENT_CODE_EXPIRE_SECONDS,
+    )
