@@ -28,7 +28,7 @@
     "@hookform/resolvers": "^3.3.0",
     "react-qr-code": "^2.0.12",
     "html5-qrcode": "^2.3.8",
-    "date-fns": "^2.30.0",
+    "date-fns": "^4.1.0",
     "recharts": "^2.10.0"
   },
   "devDependencies": {
