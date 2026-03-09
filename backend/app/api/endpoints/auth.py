@@ -2,7 +2,7 @@
 Authentication endpoints for Secure Fair.
 Implements login, registration, and user info endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -16,20 +16,28 @@ from app.schemas.auth_schemas import (
 )
 from app.core.security import pwd_handler
 from app.services.auth_service import auth_service
-from app.core.dependencies import get_current_user, get_current_active_user
+from app.core.dependencies import get_current_user, get_current_active_user, get_current_admin
 from app.core.config import settings
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def register(
+    request: Request,
     registration: RegisterRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
 ):
     """
     Register a new user.
+    
+    **ADMIN ONLY** - Requires ADMIN role to create users.
     
     Creates user account and associated Student or Socio record based on role.
     Passwords are hashed with Argon2id before storage.
@@ -40,6 +48,8 @@ async def register(
     - For ADMIN role: no additional fields
     
     **Security:**
+    - RBAC: Only ADMIN can register new users
+    - Rate limited: 10 registrations per minute per IP
     - Password minimum length: 8 characters
     - Passwords hashed with Argon2id
     - Email must be unique
@@ -130,14 +140,9 @@ async def register(
         db.add(socio)
     
     # Commit transaction
-    db.commit()
-    db.refresh(new_user)
-    
-    return new_user
-
-
-@router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     credentials: LoginRequest,
     db: Session = Depends(get_db)
 ):
@@ -152,6 +157,14 @@ async def login(
     **Token Claims:**
     - sub: user_id
     - email: user's email
+    - role: USER role (ADMIN, SOCIO, STUDENT)
+    - exp: expiration timestamp
+    - iat: issued at timestamp
+    
+    **Token Duration:** 15 minutes (configured in settings)
+    
+    **Security:**
+    - Rate limited: 5 login attempts per minute per IP (brute-force protection)'s email
     - role: USER role (ADMIN, SOCIO, STUDENT)
     - exp: expiration timestamp
     - iat: issued at timestamp
@@ -183,17 +196,9 @@ async def login(
         user_id=user.id,
         email=user.email,
         role=user.role.value
-    )
-    
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
-
-
-@router.get("/me", response_model=UserResponse)
+@limiter.limit("100/minute")
 async def get_current_user_info(
+    request: Request,
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -206,17 +211,33 @@ async def get_current_user_info(
     
     **Returns:**
     - User information (id, email, role, full_name, created_at)
+    
+    **Security:**
+    - Rate limited: 100 requests per minute per IP
     """
-    return current_user
-
-
-@router.post("/change-password", status_code=status.HTTP_200_OK)
+    Get current authenticated user information.
+    
+    Requires valid JWT token in Authorization header.
+    
+    **Headers:**
+    - Authorization: Bearer <token>
+@limiter.limit("10/minute")
 async def change_password(
+    request: Request,
     password_change: PasswordChangeRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
+    Change current user's password.
+    
+    Requires:
+    - Valid JWT token
+    - Current password for verification
+    - New password (minimum 8 characters)
+    
+    **Security:**
+    - Rate limited: 10 password changes per minute per IP
     Change current user's password.
     
     Requires:
@@ -232,9 +253,16 @@ async def change_password(
     if not pwd_handler.verify_password(current_user.password_hash, password_change.current_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect"
-        )
+@limiter.limit("100/minute")
+async def logout(
+    request: Request,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Logout current user.
     
+    **Security:**
+    - Rate limited: 100 requests per minute per IP
     # Hash and update new password
     current_user.password_hash = pwd_handler.hash_password(password_change.new_password)
     db.commit()
