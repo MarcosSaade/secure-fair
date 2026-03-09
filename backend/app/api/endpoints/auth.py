@@ -12,6 +12,7 @@ from app.db.database import get_db
 from app.models.models import User, Student, Socio, UserRole
 from app.schemas.auth_schemas import (
     LoginRequest,
+    LoginResponse,
     TokenResponse,
     RegisterRequest,
     UserResponse,
@@ -142,7 +143,7 @@ async def register(
     return new_user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")
 async def login(request: Request, credentials: LoginRequest, db: Session = Depends(get_db)):
     """
@@ -187,10 +188,11 @@ async def login(request: Request, credentials: LoginRequest, db: Session = Depen
         user_id=user.id, email=user.email, role=user.role.value
     )
 
-    return TokenResponse(
+    return LoginResponse(
         access_token=access_token,
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=user,
     )
 
 

@@ -1,6 +1,6 @@
 /**
  * Authentication Module Exports
- * 
+ *
  * Central export point for all authentication-related utilities,
  * services, and types.
  */
@@ -28,3 +28,4 @@ export { authService } from './services/authService';
 // API Client
 export { default as apiClient, getErrorMessage, isAuthError, isPermissionError } from './services/api';
 export type { ApiResponse } from './services/api';
+

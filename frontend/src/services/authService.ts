@@ -1,128 +1,85 @@
 /**
  * Authentication Service
- * 
- * Handles all authentication-related API calls including
+ *
+ * Handles all authentication-related API calls:
  * login, logout, and fetching current user information.
+ *
+ * Backend contract:
+ *   POST /auth/login  → { access_token, token_type, expires_in, user }
+ *   GET  /auth/me     → { id, email, role, full_name, created_at }
  */
 
-import apiClient, { ApiResponse, getErrorMessage } from './api';
+import apiClient, { getErrorMessage } from './api';
 import { LoginCredentials, LoginResponse, User } from '../types/auth';
 import { tokenStorage } from '../utils/tokenStorage';
 
-/**
- * Authentication Service
- */
 export const authService = {
   /**
-   * Login user and store authentication token
-   * 
-   * @param credentials - User email and password
-   * @returns Promise with user data and token
-   * @throws Error if login fails
+   * Login user and persist token + user to localStorage.
+   * Returns the full login response (token + user).
    */
-  async login(credentials: LoginCredentials): Promise<LoginResponse['data']> {
+  async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
       const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
-      
-      if (response.data.success && response.data.data) {
-        const { access_token, user } = response.data.data;
-        
-        // Store token and user data in localStorage
-        tokenStorage.setToken(access_token);
-        tokenStorage.setUser(user);
-        
-        return response.data.data;
-      }
-      
-      throw new Error(response.data.message || 'Login failed');
+      const { access_token, user } = response.data;
+
+      tokenStorage.setToken(access_token);
+      tokenStorage.setUser(user);
+
+      return response.data;
     } catch (error) {
-      const message = getErrorMessage(error);
-      throw new Error(message);
+      throw new Error(getErrorMessage(error));
     }
   },
 
-  /**
-   * Logout user and clear authentication data
-   */
+  /** Clear all stored auth data (client-side logout). */
   logout(): void {
-    // Clear all stored auth data
     tokenStorage.clearAll();
-    
-    // Optionally, you could make an API call to invalidate the token on the server
-    // For JWT without server-side tracking, client-side removal is sufficient
   },
 
   /**
-   * Get current authenticated user information from API
-   * This validates the token and returns fresh user data
-   * 
-   * @returns Promise with current user data
-   * @throws Error if user is not authenticated or token is invalid
+   * Fetch current user from backend.
+   * Validates the token and returns fresh user data.
    */
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await apiClient.get<ApiResponse<User>>('/auth/me');
-      
-      if (response.data.success && response.data.data) {
-        // Update stored user data with fresh data
-        tokenStorage.setUser(response.data.data);
-        return response.data.data;
-      }
-      
-      throw new Error(response.data.message || 'Failed to fetch user');
+      const response = await apiClient.get<User>('/auth/me');
+      tokenStorage.setUser(response.data);
+      return response.data;
     } catch (error) {
-      const message = getErrorMessage(error);
-      throw new Error(message);
+      throw new Error(getErrorMessage(error));
     }
   },
 
-  /**
-   * Get stored user from localStorage
-   * This is a quick check without API call
-   * 
-   * @returns User object or null if not logged in
-   */
+  /** Return cached user from localStorage (no API call). */
   getStoredUser(): User | null {
     return tokenStorage.getUser<User>();
   },
 
-  /**
-   * Check if user is currently authenticated
-   * Validates token existence and expiration
-   * 
-   * @returns boolean indicating authentication status
-   */
+  /** Check if a valid token exists in localStorage. */
   isAuthenticated(): boolean {
     const token = tokenStorage.getToken();
     return tokenStorage.isTokenValid(token);
   },
 
-  /**
-   * Refresh user data from API
-   * Useful for updating user info after changes
-   * 
-   * @returns Promise with updated user data
-   */
+  /** Re-fetch and cache the current user. */
   async refreshUser(): Promise<User> {
     return this.getCurrentUser();
   },
 
   /**
-   * Verify token validity by making an API call
-   * More reliable than client-side checks
-   * 
-   * @returns Promise<boolean> indicating if token is valid
+   * Verify token by making a real API call.
+   * More reliable than client-side expiry checks.
    */
   async verifyToken(): Promise<boolean> {
     try {
       await this.getCurrentUser();
       return true;
     } catch {
-      // Token is invalid, clear auth data
       this.logout();
       return false;
     }
-  }
+  },
 };
 
 export default authService;

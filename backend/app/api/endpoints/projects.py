@@ -17,9 +17,16 @@ from app.models.models import (
     UserRole,
     TimeSlot,
     EnrollmentCode,
+    Enrollment,
+    Student,
     SlotStatus,
 )
-from app.core.dependencies import get_current_admin, get_current_socio, get_current_user
+from app.core.dependencies import (
+    get_current_admin,
+    get_current_socio,
+    get_current_user,
+    get_current_student,
+)
 from app.core.config import settings
 from app.services.crypto_service import crypto_service
 from slowapi import Limiter
@@ -132,7 +139,143 @@ async def create_project(
     return new_project
 
 
-@router.get("/", response_model=List[ProjectResponse], summary="List All Projects")
+@router.get("/my-projects", response_model=List[ProjectResponse], summary="Get My Projects (SOCIO)")
+@limiter.limit("100/minute")
+async def get_my_projects(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_socio: Socio = Depends(get_current_socio),
+):
+    """
+    Return all projects assigned to the currently logged-in socio.
+
+    **SOCIO ONLY** — matches by the socio's organization.
+    """
+    projects = (
+        db.query(Project).filter(Project.socio_id == current_socio.id).order_by(Project.name).all()
+    )
+    return projects
+
+
+# ─── Slot helpers used by students ──────────────────────────────────────────
+
+
+class SlotWithProjectResponse(BaseModel):
+    """Time slot enriched with project info, for student dashboard."""
+
+    id: int
+    project_id: int
+    project_name: str
+    start_time: datetime
+    end_time: datetime
+    capacity: int
+    current_enrollments: int
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class QRTokenResponse(BaseModel):
+    """QR token for student check-in."""
+
+    token: str
+    student_id: int
+    slot_id: int
+    expires_at: str
+
+
+@router.get(
+    "/slots/available",
+    response_model=List[SlotWithProjectResponse],
+    summary="List Available Slots (STUDENT)",
+)
+@limiter.limit("100/minute")
+async def list_available_slots(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return all active (non-full, non-cancelled) time slots with project info.
+
+    **Any authenticated user** may call this endpoint.
+    """
+    slots = (
+        db.query(TimeSlot)
+        .join(Project)
+        .filter(
+            TimeSlot.status == SlotStatus.ACTIVE,
+            Project.is_active.is_(True),
+        )
+        .order_by(TimeSlot.start_time)
+        .all()
+    )
+
+    result = []
+    for slot in slots:
+        result.append(
+            SlotWithProjectResponse(
+                id=slot.id,
+                project_id=slot.project_id,
+                project_name=slot.project.name if slot.project else "???",
+                start_time=slot.start_time,
+                end_time=slot.end_time,
+                capacity=slot.capacity,
+                current_enrollments=slot.current_enrollments,
+                status=slot.status.value,
+            )
+        )
+    return result
+
+
+@router.get(
+    "/slots/{slot_id}/qr-token",
+    response_model=QRTokenResponse,
+    summary="Generate QR Token for Check-in (STUDENT)",
+)
+@limiter.limit("30/minute")
+async def get_slot_qr_token(
+    request: Request,
+    slot_id: int,
+    db: Session = Depends(get_db),
+    current_student: Student = Depends(get_current_student),
+):
+    """
+    Generate a signed QR token the student can show for physical check-in.
+
+    **STUDENT ONLY** — the student must be enrolled in the slot.
+    Token is valid for 30 minutes.
+    """
+    slot = db.query(TimeSlot).filter(TimeSlot.id == slot_id).first()
+    if not slot:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found")
+
+    # Confirm the student is actually enrolled in this slot
+    enrollment = (
+        db.query(Enrollment)
+        .filter(
+            Enrollment.student_id == current_student.id,
+            Enrollment.time_slot_id == slot_id,
+        )
+        .first()
+    )
+    if not enrollment:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not enrolled in this slot",
+        )
+
+    token = crypto_service.generate_qr_token(current_student.id, slot_id, expiration_minutes=30)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+    return QRTokenResponse(
+        token=token,
+        student_id=current_student.id,
+        slot_id=slot_id,
+        expires_at=expires_at.isoformat(),
+    )
+
+
 @limiter.limit("100/minute")
 async def list_projects(
     request: Request,
@@ -385,7 +528,7 @@ async def generate_enrollment_code(
     request: Request,
     project_id: int,
     db: Session = Depends(get_db),
-    current_socio: User = Depends(get_current_socio),
+    current_socio: Socio = Depends(get_current_socio),
 ):
     """
     Generate a one-time enrollment code for a project.
@@ -403,8 +546,7 @@ async def generate_enrollment_code(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Verify the socio belongs to this project's organization
-    socio = db.query(Socio).filter(Socio.user_id == current_socio.id).first()
-    if not socio or socio.organization_id != project.organization_id:
+    if current_socio.organization_id != project.organization_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to generate codes for this project",
@@ -422,7 +564,7 @@ async def generate_enrollment_code(
         code_hash=code_hash,
         expires_at=expires_at,
         is_used=False,
-        created_by_socio_id=socio.id,
+        created_by_socio_id=current_socio.id,
     )
     db.add(enrollment_code)
     db.commit()
