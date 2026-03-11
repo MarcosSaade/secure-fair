@@ -2,46 +2,49 @@
 // org_id, period_id, name, description, rules_text, capacity, is_active
 
 
-
 export const projects = [
   {
     project_id: 1,
     name: "Project A",
     description: "Descripción del Proyecto A",
-    rules: "Reglas del Proyecto A",
     capacity: 2,
     registered: 30,
-    checkedIn: 20,
+    duration: "3 weeks",
+    horas_acreditadas: 100,
+    lugar: 'Lugar del Proyecto A',
     orgID: 2
   },
   {
     project_id: 2,
     name: "Project B",
     description: "Descripción del Proyecto B",
-    rules: "Reglas del Proyecto B",
     capacity: 40,
     registered: 25,
-    checkedIn: 15,
+    duration: "4 weeks",
+    horas_acreditadas: 120,
+    lugar: 'Lugar del Proyecto B',
     orgID: 2
   },
   {
     project_id: 3,
     name: "Project C",
     description: "Descripción del Proyecto C",
-    rules: "Reglas del Proyecto C",
+    duration: "5 weeks",
+    horas_acreditadas: 150,
     capacity: 60,
     registered: 45,
-    checkedIn: 30,
+    lugar:'Lugar del Proyecto C',
     orgID: 3
   },
   {
     project_id: 4,
     name: "Project D",
     description: "Descripción del Proyecto D",
-    rules: "Reglas del Proyecto D",
+    duration: "6 weeks",
+    horas_acreditadas: 180,
     capacity: 1,
     registered: 20,
-    checkedIn: 10,
+    lugar:'Lugar del Proyecto D',
     orgID: 1
   }
 ];

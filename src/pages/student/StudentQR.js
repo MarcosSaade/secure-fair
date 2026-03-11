@@ -13,7 +13,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import logo from "../Logo.png";
 
 const StudentQR = () => {
-  const status = "pending"; // pending | accepted | denied
+  const status = "accepted"; // pending | accepted | denied
 
   const getColor = () => {
     if (status === "accepted") return "#15803d";
@@ -36,15 +36,48 @@ const StudentQR = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
-    navigate("/student/StudentRegisterStatus");
+    navigate("/student/slots");
   };
 
   const handleGoHome = () => {
-    navigate("/student/StudentRegister");
+    navigate("/student/register");
   };
 
   const handleProfile = () => {
-    navigate("/student/StudentProfile");
+    navigate("/student/profile");
+  };
+
+  // Buttones: Continuar (si accepted), Regresar a Página de inicio (si denied)
+  const renderButtons = () => {
+    if (status === "accepted") {
+      return (
+        <Button
+          variant="contained"
+          onClick={handleContinue}
+          sx={{
+            backgroundColor: "#0d9488",
+            borderRadius: 3
+          }}
+        >
+          Continuar
+        </Button>
+      );
+    }
+
+    if (status === "denied") {
+      return (
+        <Button
+          variant="contained"
+          onClick={handleGoHome}
+          sx={{
+            backgroundColor: "#a855f7",
+            borderRadius: 3
+          }}
+        >
+          Regresar a Página de inicio
+        </Button>
+      );
+    }
   };
 
   return (
@@ -145,31 +178,8 @@ const StudentQR = () => {
         </Box>
 
         {/* BOTONES */}
-        {status === "accepted" && (
-          <Button
-            variant="contained"
-            onClick={handleContinue}
-            sx={{
-              backgroundColor: "#0d9488",
-              borderRadius: 3
-            }}
-          >
-            Continuar
-          </Button>
-        )}
+        {renderButtons()}
 
-        {status === "denied" && (
-          <Button
-            variant="contained"
-            onClick={handleGoHome}
-            sx={{
-              backgroundColor: "#a855f7",
-              borderRadius: 3
-            }}
-          >
-            Regresar a Página de inicio
-          </Button>
-        )}
       </Paper>
     </Box>
   );

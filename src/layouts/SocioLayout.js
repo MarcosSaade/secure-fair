@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, AppBar, Toolbar, Typography } from '@mui/material';
+
 import { Outlet } from 'react-router-dom';
+import { Box, AppBar, Toolbar, Typography } from '@mui/material';
 
 /**
  * SocioLayout
@@ -9,6 +10,7 @@ import { Outlet } from 'react-router-dom';
  * Provides a dashboard-centered design with global profile access.
  * Main content at /socio, with only /socio/projects/:project_id/code as separate route.
  */
+
 const SocioLayout = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

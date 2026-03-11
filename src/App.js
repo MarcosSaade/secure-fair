@@ -16,7 +16,9 @@ import Login from './pages/Login';
 //const StudentRegister = () => <Box sx={{ p: 4 }}>Student Registration Form</Box>;
 import StudentRegister from "./pages/student/StudentRegister";
 import StudentQR from './pages/student/StudentQR';
-
+import StudentSlots from './pages/student/StudentSlots';
+import EnrollForm from './pages/student/EnrollForm';
+import StudentConfirmation from './pages/student/StudentConfirmation';
 //====================ADMIN PAGES====================
 import AdminMain from './pages/admin/main_page';
 import AdminEdit from './pages/admin/edit';
@@ -32,9 +34,9 @@ import SocioProfile from './pages/socio/profile';
 // ==================== CONST ====================
 
 // Student const
-const StudentRegisterStatus = () => <Box sx={{ p: 4 }}>Registration Status Validation</Box>;
+//const StudentRegisterStatus = () => <Box sx={{ p: 4 }}>Registration Status Validation</Box>;
 //const StudentQR = () => <Box sx={{ p: 4 }}>QR Validation Screen</Box>;
-const StudentConfirmation = () => <Box sx={{ p: 4 }}>Policy Acceptance & Code Entry</Box>;
+//const StudentConfirmation = () => <Box sx={{ p: 4 }}>Policy Acceptance & Code Entry</Box>;
 const StudentResult = () => <Box sx={{ p: 4 }}>Final Enrollment Result</Box>;
 const StudentProfile = () => <Box sx={{ p: 4 }}>Student Profile & Status</Box>;
 
@@ -71,7 +73,8 @@ function App() {
           <Route index element={<StudentRegister />} />
           <Route path="register" element={<StudentRegister />} />
           <Route path="qr" element={<StudentQR />} />
-          <Route path="status" element={<StudentRegisterStatus />} />
+          <Route path="slots" element={<StudentSlots />} />
+          <Route path="enrollform" element={<EnrollForm />} />
           <Route path="confirmation" element={<StudentConfirmation />} />
           <Route path="result" element={<StudentResult />} />
           <Route path="profile" element={<StudentProfile />} />
