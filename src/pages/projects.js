@@ -7,8 +7,8 @@ export const projects = [
     project_id: 1,
     name: "Project A",
     description: "Descripción del Proyecto A",
-    capacity: 2,
-    registered: 30,
+    capacity: 30,
+    registered: 2,
     duration: "3 weeks",
     horas_acreditadas: 100,
     lugar: 'Lugar del Proyecto A',
@@ -31,7 +31,7 @@ export const projects = [
     description: "Descripción del Proyecto C",
     duration: "5 weeks",
     horas_acreditadas: 150,
-    capacity: 60,
+    capacity: 45,
     registered: 45,
     lugar:'Lugar del Proyecto C',
     orgID: 3
@@ -42,7 +42,7 @@ export const projects = [
     description: "Descripción del Proyecto D",
     duration: "6 weeks",
     horas_acreditadas: 180,
-    capacity: 1,
+    capacity: 100,
     registered: 20,
     lugar:'Lugar del Proyecto D',
     orgID: 1

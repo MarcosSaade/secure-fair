@@ -47,7 +47,7 @@ const MainPage = () => {
   // -------------------------
   // Navigation
   // -------------------------
-  const handleCheckIn = () => navigate("/admin/check-in");
+  const handleCheckIn = () => navigate("/admin/checkin");
   const handleProfile = () => navigate("/admin/profile");
   const handleEdit = () => navigate("/admin/edit");
   //const handleEditProject = () => navigate("/admin/editProject");
