@@ -1,6 +1,6 @@
 /**
  * Authentication and User Types
- * 
+ *
  * These types define the structure for authentication-related data
  * including user information, login credentials, and JWT tokens.
  */
@@ -8,14 +8,15 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   SOCIO = 'SOCIO',
-  STUDENT = 'STUDENT'
+  STUDENT = 'STUDENT',
 }
 
+/** Mirrors backend UserResponse exactly */
 export interface User {
-  id: string;
+  id: number;
   email: string;
   role: UserRole;
-  is_active: boolean;
+  full_name: string;
   created_at: string;
 }
 
@@ -24,14 +25,12 @@ export interface LoginCredentials {
   password: string;
 }
 
+/** Mirrors backend LoginResponse exactly */
 export interface LoginResponse {
-  success: boolean;
-  data: {
-    access_token: string;
-    token_type: string;
-    user: User;
-  };
-  message?: string;
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
 }
 
 export interface AuthContextType {
@@ -43,7 +42,7 @@ export interface AuthContextType {
   isLoading: boolean;
 }
 
-// JWT Token Payload (decoded)
+/** JWT Token Payload (decoded) */
 export interface JWTPayload {
   sub: string; // user_id
   email: string;
