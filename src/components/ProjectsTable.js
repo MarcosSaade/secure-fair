@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Button,
   Table,
   TableBody,
   TableCell,
@@ -24,7 +23,7 @@ import {
  * - Card view on mobile (large, easy to read)
  * - Table view on desktop
  */
-const ProjectsTable = ({ projects = [], onRegister, getOrgName }) => {
+const ProjectsTable = ({ projects = [], getOrgName }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -234,32 +233,32 @@ const ProjectsTable = ({ projects = [], onRegister, getOrgName }) => {
                       }}
                     />
                   </Box>
-                </Box>
 
-                {/* Register Button - DISABLED if no slots */}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  disabled={isFull}
-                  onClick={() => onRegister(project)}
-                  sx={{
-                    backgroundColor: theme.palette.primary.main,
-                    color: theme.palette.background.paper,
-                    py: 1.75,
-                    fontSize: '1.05rem',
-                    fontWeight: 600,
-                    '&:hover': {
-                      backgroundColor: isFull ? theme.palette.divider : theme.palette.primary.dark,
-                    },
-                    '&:disabled': {
-                      backgroundColor: theme.palette.divider,
-                      color: theme.palette.text.disabled,
-                    },
-                  }}
-                >
-                  {isFull ? 'Cupos Llenos' : 'Registrarse'}
-                </Button>
+                  {/* Availability */}
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: theme.palette.text.secondary,
+                        fontWeight: 600,
+                        display: 'block',
+                        mb: 0.75,
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      Disponibilidad
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        color: !isFull ? theme.palette.success.main : theme.palette.error.main,
+                        fontSize: '1rem',
+                      }}
+                    >
+                      {isFull ? 'Lleno' : 'Abierto'}
+                    </Typography>
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
           );
@@ -300,7 +299,7 @@ const ProjectsTable = ({ projects = [], onRegister, getOrgName }) => {
               Cupo
             </TableCell>
             <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }} align="center">
-              Acción
+              Disponibilidad
             </TableCell>
           </TableRow>
         </TableHead>
@@ -356,28 +355,14 @@ const ProjectsTable = ({ projects = [], onRegister, getOrgName }) => {
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={isFull}
-                    onClick={() => onRegister(project)}
+                  <Typography
                     sx={{
-                      backgroundColor: theme.palette.secondary.main,
-                      color: theme.palette.background.paper,
                       fontWeight: 600,
-                      px: 2.5,
-                      py: 1,
-                      '&:hover': {
-                        backgroundColor: isFull ? theme.palette.divider : theme.palette.secondary.dark,
-                      },
-                      '&:disabled': {
-                        backgroundColor: theme.palette.divider,
-                        color: theme.palette.text.primary,
-                      },
+                      color: !isFull ? theme.palette.success.main : theme.palette.error.main,
                     }}
                   >
-                    {isFull ? 'Lleno' : 'Registrarse'}
-                  </Button>
+                    {isFull ? 'Lleno' : 'Abierto'}
+                  </Typography>
                 </TableCell>
               </TableRow>
             );
