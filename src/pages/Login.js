@@ -31,88 +31,65 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.username.trim()) {
-      newErrors.username = 'El nombre de usuario es requerido';
-    }
-
-    if (!formData.password.trim()) {
-      newErrors.password = 'La contraseña es requerida';
-    }
-
+    if (!formData.username.trim()) newErrors.username = 'El nombre de usuario es requerido';
+    if (!formData.password.trim()) newErrors.password = 'La contraseña es requerida';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     setGeneralError('');
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setGeneralError('');
-
     if (!validateForm()) return;
-
     setIsLoading(true);
 
     try {
-      // Find user in database
+      // Buscar en usuarios (socios/admin)
       const userFound = users.find(
         (user) =>
           user.username === formData.username &&
           user.password === formData.password
       );
 
-      if (!userFound) {
-        setGeneralError('Credenciales incorrectas. Intenta de nuevo.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if user is allowed to login (only socio or admin)
-      if (userFound.type !== 'socio' && userFound.type !== 'admin') {
-        setGeneralError(
-          'Solo socio-formadores y administradores pueden ingresar aquí. Los estudiantes deben crear una cuenta.'
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // Store session básica
-      sessionStorage.setItem('username', userFound.username);
-      sessionStorage.setItem('type', userFound.type);
-      sessionStorage.setItem('user', JSON.stringify(userFound));
-
-      // Si es socio, usar orgId directamente del user
-      if (userFound.type === 'socio') {
-        const orgFound = Object.values(organizations).find(
-          (org) => org.orgID === userFound.orgID
-        );
-
-        if (orgFound) {
-          sessionStorage.setItem('organization', JSON.stringify(orgFound));
+      if (userFound) {
+        // Socio o admin
+        if (userFound.type === 'socio') {
+          const orgFound = organizations.find((org) => org.orgID === userFound.orgID);
+          if (orgFound) sessionStorage.setItem('organization', JSON.stringify(orgFound));
+          sessionStorage.setItem('username', userFound.username);
+          sessionStorage.setItem('type', 'socio');
+          sessionStorage.setItem('user', JSON.stringify(userFound));
+          return navigate(`/socio/main_pageSocio/${userFound.orgID}`);
         }
 
-        // Redirección dinámica con ID
-        return navigate(`/socio/main_pageSocio/${userFound.orgID}`);
+        if (userFound.type === 'admin') {
+          sessionStorage.setItem('username', userFound.username);
+          sessionStorage.setItem('type', 'admin');
+          sessionStorage.setItem('user', JSON.stringify(userFound));
+          return navigate('/admin');
+        }
       }
 
-      // Si es admin
-      if (userFound.type === 'admin') {
-        return navigate('/admin');
+      // buscar en estudiantes
+      const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
+      const studentFound = studentAccounts[formData.username];
+
+      if (studentFound && studentFound.password === formData.password) {
+        sessionStorage.setItem('username', studentFound.username);
+        sessionStorage.setItem('type', 'student');
+        sessionStorage.setItem('studentData', JSON.stringify(studentFound));
+        return navigate('/student/qr');
       }
 
-      // Otros roles
-      navigate(`/${userFound.type}`);
+      // Si no se encontró ningún usuario
+      setGeneralError('Credenciales incorrectas. Intenta de nuevo.');
     } catch (error) {
       setGeneralError('Ocurrió un error. Intenta de nuevo.');
     } finally {
@@ -151,9 +128,7 @@ const Login = () => {
                 height: 'auto',
                 objectFit: 'contain',
                 transition: '0.3s',
-                '&:hover': {
-                  transform: 'scale(1.05)',
-                },
+                '&:hover': { transform: 'scale(1.05)' },
               }}
             />
           </Box>
@@ -162,11 +137,7 @@ const Login = () => {
           <Typography
             variant="h4"
             align="center"
-            sx={{
-              color: theme.palette.primary.main,
-              mb: 1,
-              fontWeight: 700,
-            }}
+            sx={{ color: theme.palette.primary.main, mb: 1, fontWeight: 700 }}
           >
             Feria del Servicio Social
           </Typography>
@@ -175,31 +146,20 @@ const Login = () => {
           <Typography
             variant="body1"
             align="center"
-            sx={{
-              color: theme.palette.text.secondary,
-              mb: 4,
-              fontWeight: 500,
-            }}
+            sx={{ color: theme.palette.text.secondary, mb: 4, fontWeight: 500 }}
           >
-            Inicia sesión como socio-formador o administrador
+            Inicia sesión con tu cuenta
           </Typography>
 
           {/* General Error Alert */}
           {generalError && (
-            <Alert
-              severity="error"
-              sx={{
-                mb: 3,
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
+            <Alert severity="error" sx={{ mb: 3, borderRadius: theme.shape.borderRadius }}>
               {generalError}
             </Alert>
           )}
 
           {/* Form */}
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            {/* Username Field */}
             <TextField
               fullWidth
               label="Nombre de usuario"
@@ -213,7 +173,6 @@ const Login = () => {
               sx={{ mb: 2 }}
             />
 
-            {/* Password Field */}
             <TextField
               fullWidth
               label="Contraseña"
@@ -233,14 +192,13 @@ const Login = () => {
                     disabled={isLoading}
                     size="small"
                   >
-                    {showPassword ? <Visibility /> : <VisibilityOff />}
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
                 ),
               }}
               sx={{ mb: 3 }}
             />
 
-            {/* Login Button */}
             <Button
               type="submit"
               fullWidth
@@ -250,15 +208,12 @@ const Login = () => {
               sx={{
                 mb: 2,
                 bgcolor: theme.palette.primary.main,
-                '&:hover': {
-                  bgcolor: theme.palette.primary.dark,
-                },
+                '&:hover': { bgcolor: theme.palette.primary.dark },
               }}
             >
               {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
 
-            {/* Sign Up Link */}
             <Button
               fullWidth
               variant="text"
@@ -268,9 +223,7 @@ const Login = () => {
                 color: theme.palette.primary.main,
                 textTransform: 'none',
                 fontWeight: 500,
-                '&:hover': {
-                  backgroundColor: `${theme.palette.primary.main}10`,
-                },
+                '&:hover': { backgroundColor: `${theme.palette.primary.main}10` },
               }}
             >
               ¿Eres estudiante? Crea una cuenta primero

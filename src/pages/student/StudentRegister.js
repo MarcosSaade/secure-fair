@@ -117,12 +117,27 @@ const StudentRegister = () => {
   const handleContinue = () => {
     if (!validateForm()) return;
 
+    // Get existing student data from sessionStorage (if any)
+     const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
+    
+     // Check if matricula is used by another student
+      const matriculaRepetida = Object.values(studentAccounts).some(
+        (student) => student.matricula === formData.matricula
+      );
+
+      if (matriculaRepetida) {
+        setErrors((prev) => ({
+          ...prev,
+          matricula: 'Esta matrícula ya está asociada a otra cuenta',
+        }));
+        return;
+      }
+
     // Create student object - combine nombre y apellidos
     const studentData = {
       user_id: Date.now(),
       username: username,
       nombre: `${formData.nombre} ${formData.apellidos}`,
-      apellidos: formData.apellidos,
       nombre_solo: formData.nombre,
       matricula: formData.matricula,
       carrera: formData.carrera,
@@ -139,7 +154,6 @@ const StudentRegister = () => {
     sessionStorage.setItem('studentData', JSON.stringify(studentData));
 
     // Also save to localStorage for persistence
-    const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
     studentAccounts[username] = {
       ...studentAccounts[username],
       ...studentData,

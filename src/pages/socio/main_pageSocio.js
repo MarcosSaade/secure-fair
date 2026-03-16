@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-
+import { useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,12 +11,6 @@ import {
   TextField,
   MenuItem,
   Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   IconButton,
   Dialog,
   DialogTitle,
@@ -29,10 +23,11 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
-import { students as studentsData } from "../students.js";
+//import { students as studentsData } from "../students.js";
 import { projects as projectsData } from "../projects.js";
 import { organizations as orgsData } from "../organization.js";
 import { enrollmentCodes as initialCodes } from "../enrollmentCodes.js";
+import ProjectEnrolledStudents from "../../components/ProjectEnrolledStudents.js";
 
 const MainSocio = () => {
   // -------------------------
@@ -63,7 +58,22 @@ const MainSocio = () => {
   // -------------------------
   // Convertir students (objeto → array)
   // -------------------------
-  const studentsArray = studentsData ? Object.values(studentsData) : [];
+  const [studentsArray, setStudentsArray] = useState([]);
+
+  useEffect(() => {
+  const loadStudents = () => {
+    const storedStudents = JSON.parse(localStorage.getItem("studentAccounts")) || {};
+    setStudentsArray(Object.values(storedStudents));
+  };
+
+  loadStudents();
+
+  window.addEventListener("storage", loadStudents);
+
+  return () => {
+    window.removeEventListener("storage", loadStudents);
+  };
+  }, []);
 
   // -------------------------
   // IDs de proyectos de la org
@@ -165,7 +175,8 @@ const MainSocio = () => {
         Matricula: student.matricula,
         Nombre: student.nombre,
         Correo: student.correo,
-        Telefono: student.telefono,
+        Telefono: student.celular,
+        Carrera: student.carrera || "N/A",
         Proyecto: project ? project.name : "N/A",
         Fecha_Registro: student.registered_at,
       };
@@ -372,61 +383,11 @@ const MainSocio = () => {
           Estudiantes Registrados
         </Typography>
 
-        <Paper sx={{ borderRadius: 3 }}>
-          {filteredStudents.length > 0 ? (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f0f9ff" }}>
-                    <TableCell>
-                      <strong>Matrícula</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Nombre</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Correo</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Teléfono</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Proyecto</strong>
-                    </TableCell>
-                    <TableCell>
-                      <strong>Fecha Registro</strong>
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {filteredStudents.map((student) => {
-                    const project = projects.find(
-                      (proj) => proj.project_id === student.project_id
-                    );
-
-                    return (
-                      <TableRow key={student.matricula}>
-                        <TableCell>{student.matricula}</TableCell>
-                        <TableCell>{student.nombre}</TableCell>
-                        <TableCell>{student.correo}</TableCell>
-                        <TableCell>{student.telefono}</TableCell>
-                        <TableCell>{project ? project.name : "N/A"}</TableCell>
-                        <TableCell>{student.registered_at}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Box sx={{ p: 3 }}>
-              <Typography>
-                No hay estudiantes registrados {selectedProject ? "en este proyecto" : "en esta organización"}.
-              </Typography>
-            </Box>
-          )}
-        </Paper>
+        <ProjectEnrolledStudents
+          students={filteredStudents}
+          projects={projects}
+          selectedProject={selectedProject}
+        />
       </Box>
 
       {/* CODES DIALOG */}

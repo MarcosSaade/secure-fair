@@ -1,15 +1,19 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Container,
-  Box,
-  Paper,
-  Typography,
-  Button,
-} from "@mui/material";
+import { Container, Box, Paper, Typography, Button } from "@mui/material";
+import { projects } from "../projects";
+import { organizations } from "../organization";
 
 const StudentEnrollConfirm = () => {
   const navigate = useNavigate();
+
+  // Obtener username y datos del estudiante desde sessionStorage
+  const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
+  
+
+  // Obtener proyecto y organización del estudiante
+  const enrolledProject = projects.find(p => p.project_id === studentData?.project_id);
+  const enrolledOrg = organizations.find(o => o.orgID === enrolledProject?.orgID);
 
   const handleGoHome = () => {
     navigate("/signin"); 
@@ -33,12 +37,23 @@ const StudentEnrollConfirm = () => {
             ¡Felicidades!
           </Typography>
 
-          <Typography
-            variant="body1"
-            sx={{ mb: 4, color: "text.secondary" }}
-          >
+        {enrolledProject && enrolledOrg ? (
+          <Box sx={{ mb: 4, color: "text.secondary" }}>
+            {/* Texto principal más grande */}
+            <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+              {`Has quedado inscrito en el proyecto "${enrolledProject.name}" de la organización "${enrolledOrg.name_org}".`}
+            </Typography>
+
+            {/* Texto secundario más pequeño */}
+            <Typography variant="body2">
+              En caso de necesitarlo, podrás ver tu estatus en cualquier momento en tu perfil.
+            </Typography>
+          </Box>
+        ) : (
+          <Typography variant="h6" sx={{ mb: 4, color: "text.secondary" }}>
             Has quedado inscrito en el servicio social.
           </Typography>
+        )}
 
           <Button
             variant="contained"

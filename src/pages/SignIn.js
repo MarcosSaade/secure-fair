@@ -291,7 +291,7 @@ const SignUp = () => {
                     disabled={isLoading}
                     size="small"
                   >
-                    {showPassword ? <Visibility /> : <VisibilityOff/>}
+                    {showPassword ? <VisibilityOff /> : <Visibility/>}
                   </IconButton>
                 ),
               }}
@@ -404,7 +404,7 @@ const SignUp = () => {
                     disabled={isLoading || !allRequirementsMet}
                     size="small"
                   >
-                    {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
+                    {showConfirmPassword ? <VisibilityOff /> : <Visibility/>}
                   </IconButton>
                 ),
               }}
