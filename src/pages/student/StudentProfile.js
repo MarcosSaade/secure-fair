@@ -14,30 +14,37 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { projects } from '../projects';
 import { organizations } from '../organization';
+import * as storageService from '../../services/StorageService';
 
 const StudentProfile = () => {
   const theme = useTheme();
-  const username = sessionStorage.getItem('username');
+  const user = JSON.parse(sessionStorage.getItem('user'));
+  const id_usuario = user?.id_usuario; 
+  //const username = sessionStorage.getItem('username');
+
+  const estudiantes = storageService.getEstudiantes();
+  const studentData = estudiantes.find(est => est.id_usuario === user.id_usuario);
 
   // Get complete student data from localStorage
-  const getStudentData = () => {
-    const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-    const student = studentAccounts[username];
+  //const getStudentData = () => {
+    //const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
+    //const student = studentAccounts[username];
 
-    if (!student) return null;
+    //if (!student) return null;
 
-    if (student.apellidos && !student.nombre.includes(student.apellidos)) {
-      student.nombre = `${student.nombre} ${student.apellidos}`;
-    }
+  //  if (student.apellidos && !student.nombre.includes(student.apellidos)) {
+   //   student.nombre = `${student.nombre} ${student.apellidos}`;
+   // }
 
-    return student;
-  };
+   // return student;
+ // };
 
-  const studentData = getStudentData();
+ // const studentData = getStudentData();
 
-  const [formData, setFormData] = useState({
-    username: studentData?.username || username || '',
-    password: studentData?.password || '',
+
+    const [formData, setFormData] = useState({
+    username: user?.username ||  '',
+    password: user?.contraseña || '',
     nombre: studentData?.nombre || '',
     matricula: studentData?.matricula || '',
     carrera: studentData?.carrera || '',
@@ -54,8 +61,8 @@ const StudentProfile = () => {
   const [editMode, setEditMode] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  const enrolledProject = projects.find(p => p.project_id === studentData?.project_id);
-  const enrolledOrg = organizations.find(o => o.orgID === enrolledProject?.orgID);
+  const enrolledProject = projects.find(p => p.id_proyecto === studentData?.id_proyecto);
+  const enrolledOrg = organizations.find(o => o.id_organizacion === enrolledProject?.id_organizacion);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -136,23 +143,42 @@ const StudentProfile = () => {
     const finalPassword = formData.newPassword.trim() ? formData.newPassword : formData.password;
 
     // Update localStorage
-    const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-    studentAccounts[username] = {
-      ...studentAccounts[username],
-      username: formData.username,
-      password: finalPassword,
+  //  const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
+  //  studentAccounts[username] = {
+  //    ...studentAccounts[username],
+  //    username: formData.username,
+  //    password: finalPassword,
+   //   nombre: formData.nombre,
+   //   matricula: formData.matricula,
+  //    carrera: formData.carrera,
+  //    correo: formData.correo,
+  //    celular: formData.celular,
+    //  hora_registro: formData.hora_registro,
+    //};
+
+    const updatedStudent = {
+      id_usuario,
       nombre: formData.nombre,
+      apellidos: formData.apellidos,
       matricula: formData.matricula,
       carrera: formData.carrera,
       correo: formData.correo,
       celular: formData.celular,
       hora_registro: formData.hora_registro,
     };
-    localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
+
+    storageService.saveEstudiante(user.username, updatedStudent);
+
+    //localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
+    storageService.saveUsuario(id_usuario, { ...user, password: finalPassword });
+
+    sessionStorage.setItem('studentData', JSON.stringify(updatedStudent));
+    sessionStorage.setItem('user', JSON.stringify({ ...user, password: finalPassword }));
+    
 
     // Update sessionStorage
-    sessionStorage.setItem('studentData', JSON.stringify(studentAccounts[username]));
-    sessionStorage.setItem('password', finalPassword);
+   // sessionStorage.setItem('studentData', JSON.stringify(studentAccounts[username]));
+   // sessionStorage.setItem('password', finalPassword);
 
     // Update formData state
     setFormData(prev => ({
@@ -326,11 +352,11 @@ const StudentProfile = () => {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 }}>
                 <Box>
                   <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Nombre del Proyecto</Typography>
-                  <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: theme.palette.primary.main }}>{enrolledProject.name}</Typography>
+                  <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: theme.palette.primary.main }}>{enrolledProject.nombre_proyecto}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Duración</Typography>
-                  <Typography sx={{ fontSize: '1rem' }}>{enrolledProject.duration}</Typography>
+                  <Typography sx={{ fontSize: '1rem' }}>{enrolledProject.duracion}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Horas Acreditadas</Typography>
@@ -342,11 +368,11 @@ const StudentProfile = () => {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Organización</Typography>
-                  <Typography sx={{ fontSize: '1rem' }}>{enrolledOrg?.name_org || 'N/A'}</Typography>
+                  <Typography sx={{ fontSize: '1rem' }}>{enrolledOrg?.nombre_osf || 'N/A'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Descripción</Typography>
-                  <Typography sx={{ fontSize: '1rem' }}>{enrolledProject.description}</Typography>
+                  <Typography sx={{ fontSize: '1rem' }}>{enrolledProject.descripcion_proyecto}</Typography>
                 </Box>
               </Box>
             </>

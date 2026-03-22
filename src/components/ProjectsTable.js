@@ -29,7 +29,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
 
   // Helper function to calculate available slots
   const getAvailableSlots = (project) => {
-    return Math.max(0, project.capacity - (project.registered || 0));
+    return Math.max(0, project.cupo_estudiantes - (project.inscritos || 0));
   };
 
   // Mobile Card View
@@ -42,7 +42,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
 
           return (
             <Card
-              key={project.project_id}
+              key={project.id_proyecto}
               sx={{
                 borderRadius: 2,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -65,7 +65,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                     fontSize: '1.3rem',
                   }}
                 >
-                  {project.name}
+                  {project.nombre_proyecto}
                 </Typography>
 
                 {/* Description */}
@@ -90,7 +90,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                       lineHeight: 1.5,
                     }}
                   >
-                    {project.description}
+                    {project.descripcion}
                   </Typography>
                 </Box>
 
@@ -124,7 +124,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                         fontSize: '1rem',
                       }}
                     >
-                      {project.duration}
+                      {project.duracion}
                     </Typography>
                   </Box>
 
@@ -197,7 +197,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                         fontSize: '0.95rem',
                       }}
                     >
-                      {getOrgName(project.orgID)}
+                      {getOrgName(project.id_organizacion) || 'N/A'}
                     </Typography>
                   </Box>
 
@@ -310,7 +310,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
 
             return (
               <TableRow
-                key={project.project_id}
+                key={project.id_proyecto}
                 sx={{
                   opacity: isFull ? 0.6 : 1,
                   '&:hover': {
@@ -324,19 +324,19 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                 }}
               >
                 <TableCell sx={{ fontWeight: 600 }}>
-                  {project.name}
+                  {project.nombre_proyecto}
                 </TableCell>
                 <TableCell sx={{ maxWidth: 150 }}>
-                  {project.description}
+                  {project.descripcion}
                 </TableCell>
-                <TableCell>{project.duration}</TableCell>
+                <TableCell>{project.duracion}</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>
                   {project.horas_acreditadas ?? <span style={{ color: '#aaa' }}>N/A</span>}
                 </TableCell>
                 <TableCell>
                   {project.lugar || <span style={{ color: '#aaa' }}>N/A</span>}
                 </TableCell>
-                <TableCell>{getOrgName(project.orgID)}</TableCell>
+                <TableCell>{getOrgName(project.id_organizacion) || 'N/A'}</TableCell>
                 <TableCell>
                   <Chip
                     label={`${availableSlots}`}

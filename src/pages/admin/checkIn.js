@@ -32,6 +32,8 @@ import {
   getCheckedInStudentsToday,
 } from '../../services/studentService';
 
+import * as storageService from '../../services/StorageService';
+
 const CheckIn = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -236,11 +238,16 @@ const CheckIn = () => {
         return;
       }
 
+      const usuarios = storageService.getUsuarios();
+      const usuario = usuarios.find(u => u.id_usuario === student.id_usuario);
+
       // Create mock QR data from student info
       const mockData = {
-        username: student.username,
+        id_usuario: student.id_usuario,
+        username: usuario?.username,
         matricula: student.matricula,
         nombre: student.nombre,
+        apellidos: student.apellidos,
         hora_registro: student.hora_registro,
         timestamp: new Date().toISOString(),
       };

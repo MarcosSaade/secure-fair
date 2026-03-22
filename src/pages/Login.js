@@ -15,6 +15,8 @@ import { useTheme } from '@mui/material/styles';
 import { users } from './users';
 import { organizations } from './organization';
 import logo from './Logo.png';
+import * as storageService from '../services/StorageService';
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ const Login = () => {
 
   const [formData, setFormData] = useState({
     username: '',
-    password: '',
+    contraseña: '',
   });
   const [errors, setErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
@@ -32,7 +34,7 @@ const Login = () => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.username.trim()) newErrors.username = 'El nombre de usuario es requerido';
-    if (!formData.password.trim()) newErrors.password = 'La contraseña es requerida';
+    if (!formData.contraseña.trim()) newErrors.contraseña = 'La contraseña es requerida';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -51,44 +53,83 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Buscar en usuarios (socios/admin)
+      // 1. Buscar en dummies (socios/admin)
       const userFound = users.find(
         (user) =>
           user.username === formData.username &&
-          user.password === formData.password
+          user.contraseña === formData.contraseña
       );
 
       if (userFound) {
-        // Socio o admin
-        if (userFound.type === 'socio') {
-          const orgFound = organizations.find((org) => org.orgID === userFound.orgID);
-          if (orgFound) sessionStorage.setItem('organization', JSON.stringify(orgFound));
+        if (userFound.tipo === 'socio') {
+          const orgFound = organizations.find(
+            (org) => org.id_organizacion === userFound.id_organizacion
+          );
+          if (orgFound) {
+            sessionStorage.setItem('organization', JSON.stringify(orgFound));
+          }
           sessionStorage.setItem('username', userFound.username);
-          sessionStorage.setItem('type', 'socio');
+          sessionStorage.setItem('tipo', 'socio');
           sessionStorage.setItem('user', JSON.stringify(userFound));
-          return navigate(`/socio/main_pageSocio/${userFound.orgID}`);
+          return navigate(`/socio/main_pageSocio/${userFound.id_organizacion}`);
         }
 
-        if (userFound.type === 'admin') {
+        if (userFound.tipo === 'admin') {
           sessionStorage.setItem('username', userFound.username);
-          sessionStorage.setItem('type', 'admin');
+          sessionStorage.setItem('tipo', 'admin');
           sessionStorage.setItem('user', JSON.stringify(userFound));
           return navigate('/admin');
         }
       }
 
-      // buscar en estudiantes
-      const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-      const studentFound = studentAccounts[formData.username];
+      // 2. Buscar en usuarios reales
+      const usuarios = storageService.getUsuarios();
+      const usuarioReal = usuarios.find(
+        (user) =>
+          user.username === formData.username &&
+          user.contraseña === formData.contraseña
+      );
 
-      if (studentFound && studentFound.password === formData.password) {
-        sessionStorage.setItem('username', studentFound.username);
-        sessionStorage.setItem('type', 'student');
-        sessionStorage.setItem('studentData', JSON.stringify(studentFound));
-        return navigate('/student/qr');
+      if (usuarioReal) {
+        if (usuarioReal.tipo === 'socio') {
+          const organizaciones = storageService.getOrganizaciones();
+          const orgFound = organizaciones.find(
+            (org) => org.id_organizacion === usuarioReal.id_organizacion
+          );
+          if (orgFound) {
+            sessionStorage.setItem('organization', JSON.stringify(orgFound));
+          }
+          sessionStorage.setItem('username', usuarioReal.username);
+          sessionStorage.setItem('tipo', 'socio');
+          sessionStorage.setItem('user', JSON.stringify(usuarioReal));
+          return navigate(`/socio/main_pageSocio/${usuarioReal.id_organizacion}`);
+        }
+
+        if (usuarioReal.tipo === 'admin') {
+          sessionStorage.setItem('username', usuarioReal.username);
+          sessionStorage.setItem('tipo', 'admin');
+          sessionStorage.setItem('user', JSON.stringify(usuarioReal));
+          return navigate('/admin');
+        }
+
+        if (usuarioReal.tipo === 'student') {
+          // 3. Buscar datos adicionales en estudiantes por id_usuario
+          const estudiantes = storageService.getEstudiantes();
+          const studentData = estudiantes.find(
+            (est) => est.id_usuario === usuarioReal.id_usuario
+          );
+
+          sessionStorage.setItem('username', usuarioReal.username);
+          sessionStorage.setItem('tipo', 'student');
+          sessionStorage.setItem(
+            'studentData',
+            JSON.stringify(studentData || {}) // siempre objeto válido
+          );
+          return navigate('/student/qr');
+        }
       }
 
-      // Si no se encontró ningún usuario
+      // 4. Si no se encontró ningún usuario
       setGeneralError('Credenciales incorrectas. Intenta de nuevo.');
     } catch (error) {
       setGeneralError('Ocurrió un error. Intenta de nuevo.');
@@ -96,6 +137,7 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
 
   return (
     <Box
@@ -176,12 +218,12 @@ const Login = () => {
             <TextField
               fullWidth
               label="Contraseña"
-              name="password"
+              name="contraseña"
               type={showPassword ? 'text' : 'password'}
-              value={formData.password}
+              value={formData.contraseña}
               onChange={handleInputChange}
-              error={!!errors.password}
-              helperText={errors.password}
+              error={!!errors.contraseña}
+              helperText={errors.contraseña}
               margin="normal"
               disabled={isLoading}
               InputProps={{

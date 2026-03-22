@@ -13,7 +13,6 @@ import {
 
 const ProjectEnrolledStudents = ({ students, projects, selectedProject }) => {
 
-  console.log("Students received:", students);
 
   if (!students || students.length === 0) {
     return (
@@ -46,17 +45,19 @@ const ProjectEnrolledStudents = ({ students, projects, selectedProject }) => {
           <TableBody>
             {students.map((student) => {
               const project = projects.find(
-                (proj) => proj.project_id === student.project_id
+                (proj) => proj.id_proyecto === student.id_proyecto
               );
 
+              const nombreCompleto = `${student.nombre} ${student.apellidos || ""}`.trim();
+
               return (
-                <TableRow key={student.matricula}>
+                <TableRow key={student.id_usuario}>
                   <TableCell>{student.matricula}</TableCell>
-                  <TableCell>{student.nombre}</TableCell>
+                  <TableCell>{nombreCompleto}</TableCell>
                   <TableCell>{student.correo}</TableCell>
                   <TableCell>{student.celular || "N/A"}</TableCell>
                   <TableCell>{student.carrera || "N/A"}</TableCell>
-                  <TableCell>{project ? project.name : "N/A"}</TableCell>
+                  <TableCell>{project ? project.nombre_proyecto : "N/A"}</TableCell>
                   <TableCell>{student.registered_at}</TableCell>
                 </TableRow>
               );

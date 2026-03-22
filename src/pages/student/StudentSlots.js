@@ -17,15 +17,15 @@ const StudentSlots = () => {
   };
 
   // Get org name by orgID
-  const getOrgName = (orgID) => {
-    const org = organizations.find((o) => o.orgID === orgID);
-    return org ? org.name_org : "";
+  const getOrgName = (id_organizacion) => {
+    const org = organizations.find((o) => o.id_organizacion === id_organizacion);
+    return org ? org.nombre_osf : "";
   };
 
   // Filter projects by name and organization
   const filteredProjects = projects.filter((project) => {
-    const matchesName = project.name.toLowerCase().includes(search.toLowerCase());
-    const matchesOrg = orgFilter ? project.orgID === Number(orgFilter) : true;
+    const matchesName = project.nombre_proyecto.toLowerCase().includes(search.toLowerCase());
+    const matchesOrg = orgFilter ? project.id_organizacion === Number(orgFilter) : true;
     return matchesName && matchesOrg;
   });
 
@@ -107,8 +107,8 @@ const StudentSlots = () => {
         >
           <MenuItem value="">Todas</MenuItem>
           {organizations.map((org) => (
-            <MenuItem key={org.orgID} value={org.orgID}>
-              {org.name_org}
+            <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
+              {org.nombre_osf}
             </MenuItem>
           ))}
         </TextField>

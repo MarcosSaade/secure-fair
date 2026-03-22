@@ -16,6 +16,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 
 import { projects as projectsData } from "../projects.js";
+import * as storageService from '../../services/StorageService';
 
 const StudentEnroll = () => {
   const [formData, setFormData] = useState({
@@ -95,10 +96,12 @@ const StudentEnroll = () => {
         return;
       }
       //  MARK CODE AS USED
-      const username = sessionStorage.getItem("username");
-      const studentData = JSON.parse(sessionStorage.getItem("studentData"));
+      const user = JSON.parse(sessionStorage.getItem('user'));
+      const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
+    //  const username = sessionStorage.getItem("username");
+    //  const studentData = JSON.parse(sessionStorage.getItem("studentData"));
 
-      if (studentData?.project_id) {
+      if (studentData?.id_proyecto) {
           setValidationResult({
             success: false,
             message: "Ya estás inscrito en un proyecto. No puedes inscribirte en más de uno.",
@@ -108,7 +111,7 @@ const StudentEnroll = () => {
         }
 
 
-      if (!studentData || !username) {
+      if (!studentData || !user) {
         setValidationResult({
           success: false,
           message: "No se pudo identificar al estudiante. Inicia sesión nuevamente.",
@@ -137,33 +140,45 @@ const StudentEnroll = () => {
 
       localStorage.setItem("enrollmentCodes",JSON.stringify(savedCodes));
 
-      const studentAccounts = JSON.parse(localStorage.getItem("studentAccounts")) || {};
+      const updatedStudent = {
+        ...studentData,
+        id_proyecto: codeObj.id_proyecto,
+        id_organizacion: codeObj.socio_id,
+      };
+      storageService.saveEstudiante(user.id_usuario, updatedStudent);
 
-      if (studentAccounts[username]) {
-        studentAccounts[username].project_id = codeObj.project_id;
-        studentAccounts[username].orgID = codeObj.socio_id;
+      sessionStorage.setItem("studentData", JSON.stringify(updatedStudent));
 
-        localStorage.setItem(
-          "studentAccounts",
-          JSON.stringify(studentAccounts)
-        );
 
+
+
+      //const studentAccounts = JSON.parse(localStorage.getItem("studentAccounts")) || {};
+
+     // if (studentAccounts[username]) {
+     //   studentAccounts[username].id_proyecto = codeObj.id_proyecto;
+    //    studentAccounts[username].id_organizacion = codeObj.socio_id;
+
+    //    localStorage.setItem(
+    //      "studentAccounts",
+    //      JSON.stringify(studentAccounts)
+     //   );
+//
         //  ALSO UPDATE SESSION STORAGE
-        sessionStorage.setItem(
-          "studentData",
-          JSON.stringify(studentAccounts[username])
-        );
-      }
+    //    sessionStorage.setItem(
+    //      "studentData",
+    //      JSON.stringify(studentAccounts[username])
+     //   );
+    //  }
 
       const project = projectsData.find(
-        (p) => p.project_id === codeObj.project_id
+        (p) => p.id_proyecto === codeObj.id_proyecto
       );
 
       setProjectInfo(project);
 
       setValidationResult({
         success: true,
-        message: `¡Código válido! Te has inscrito al proyecto: ${project.name}`,
+        message: `¡Código válido! Te has inscrito al proyecto: ${project.nombre_proyecto}`,
       });
 
       setValidating(false);
@@ -274,14 +289,14 @@ const StudentEnroll = () => {
                 }}
               >
                 <Typography variant="h6" gutterBottom>
-                  {projectInfo.name}
+                  {projectInfo.nombre_proyecto}
                 </Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   paragraph
                 >
-                  {projectInfo.description}
+                  {projectInfo.descripcion}
                 </Typography>
                 <Box
                   sx={{
@@ -298,7 +313,7 @@ const StudentEnroll = () => {
                       Duración
                     </Typography>
                     <Typography variant="body2">
-                      {projectInfo.duration}
+                      {projectInfo.duracion}
                     </Typography>
                   </Box>
                   <Box>

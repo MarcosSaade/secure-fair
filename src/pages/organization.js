@@ -3,18 +3,18 @@
 
 export const organizations = [
   {
-    orgID: 1,
-    name_org: "Ampre",
-    created_at: "2024-02-20",
+    id_organizacion: 1,
+    nombre_osf: "Ampre",
+    correo_contacto: "ampre@example.com",
   },
   {
-    orgID: 2,
-    name_org: "Escuela Margarita",
-    created_at: "2024-03-10",
+    id_organizacion: 2,
+    nombre_osf: "Escuela Margarita",
+    correo_contacto: "margarita@example.com",
   },
   {
-    orgID: 3,
-    name_org: "BBVA",
-    created_at: "2024-04-05",
+    id_organizacion: 3,
+    nombre_osf: "BBVA",
+    correo_contacto: "bbva@example.com",
   },
 ];

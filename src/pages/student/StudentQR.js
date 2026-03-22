@@ -23,14 +23,19 @@ const StudentQR = () => {
   const [timeRemaining, setTimeRemaining] = useState(""); // NEW: Show time until slot
 
   // Get student data from sessionStorage
+ // const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
+  //const username = sessionStorage.getItem("username") || "";
+
+  const user = JSON.parse(sessionStorage.getItem('user'));
   const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
-  const username = sessionStorage.getItem("username") || "";
 
   // Generate QR value with student data
   const qrValue = JSON.stringify({
-    username: username,
+    id_usuario: user?.id_usuario || "",
+    username: user?.username || "",
     matricula: studentData?.matricula || "",
     nombre: studentData?.nombre || "",
+    apellidos: studentData?.apellidos || "",
     hora_registro: studentData?.hora_registro || "",
     timestamp: new Date().toISOString(),
   });

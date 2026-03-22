@@ -28,6 +28,7 @@ import { projects as projectsData } from "../projects.js";
 import { organizations as orgsData } from "../organization.js";
 import { enrollmentCodes as initialCodes } from "../enrollmentCodes.js";
 import ProjectEnrolledStudents from "../../components/ProjectEnrolledStudents.js";
+import * as storageService from '../../services/StorageService';
 
 const MainSocio = () => {
   // -------------------------
@@ -46,13 +47,13 @@ const MainSocio = () => {
   // -------------------------
   // Obtener organización
   // -------------------------
-  const organization = orgsData?.find((org) => org.orgID === Number(orgId));
+  const organization = orgsData?.find((org) => org.id_organizacion === Number(orgId));
 
   // -------------------------
   // Proyectos de la organización
   // -------------------------
   const projects = projectsData?.filter(
-    (proj) => proj.orgID === Number(orgId)
+    (proj) => proj.id_organizacion === Number(orgId)
   ) || [];
 
   // -------------------------
@@ -62,7 +63,8 @@ const MainSocio = () => {
 
   useEffect(() => {
   const loadStudents = () => {
-    const storedStudents = JSON.parse(localStorage.getItem("studentAccounts")) || {};
+   //const storedStudents = JSON.parse(localStorage.getItem("studentAccounts")) || {};
+   const storedStudents = storageService.getEstudiantes() || {};
     setStudentsArray(Object.values(storedStudents));
   };
 
@@ -78,13 +80,13 @@ const MainSocio = () => {
   // -------------------------
   // IDs de proyectos de la org
   // -------------------------
-  const projectIds = projects.map((proj) => proj.project_id);
+  const projectIds = projects.map((proj) => proj.id_proyecto);
 
   // -------------------------
   // Estudiantes inscritos en proyectos de la org
   // -------------------------
   const studentsFromOrgProjects = studentsArray.filter((student) =>
-    projectIds.includes(student.project_id)
+    projectIds.includes(student.id_proyecto)
   );
 
   // -------------------------
@@ -92,7 +94,7 @@ const MainSocio = () => {
   // -------------------------
   const filteredStudents = selectedProject
     ? studentsFromOrgProjects.filter(
-        (student) => student.project_id === Number(selectedProject)
+        (student) => student.id_proyecto === Number(selectedProject)
       )
     : studentsFromOrgProjects;
 
@@ -100,7 +102,7 @@ const MainSocio = () => {
   // Get codes for selected project
   // -------------------------
   const projectCodes = selectedProject
-    ? generatedCodes.filter((code) => code.project_id === Number(selectedProject))
+    ? generatedCodes.filter((code) => code.id_proyecto === Number(selectedProject))
     : [];
 
   // -------------------------
@@ -135,8 +137,8 @@ const MainSocio = () => {
     const newCode = {
       code_id: Math.max(...generatedCodes.map((c) => c.code_id), 0) + 1,
       code: code,
-      project_id: Number(selectedProject),
-      socio_id: Number(orgId),
+      id_proyecto: Number(selectedProject),
+      id_organizacion: Number(orgId),
       created_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
       is_used: false,
@@ -168,17 +170,17 @@ const MainSocio = () => {
   const handleExport = (type = "csv") => {
     const dataToExport = filteredStudents.map((student) => {
       const project = projects.find(
-        (proj) => proj.project_id === student.project_id
+        (proj) => proj.id_proyecto === student.id_proyecto
       );
 
       return {
         Matricula: student.matricula,
-        Nombre: student.nombre,
+        Nombre: `${student.nombre} ${student.apellidos || ""}`.trim(),
         Correo: student.correo,
         Telefono: student.celular,
         Carrera: student.carrera || "N/A",
-        Proyecto: project ? project.name : "N/A",
-        Fecha_Registro: student.registered_at,
+        Proyecto: project ? project.nombre_proyecto : "N/A",
+        Fecha_Registro: student.hora_registro || "N/A",
       };
     });
 
@@ -212,7 +214,7 @@ const MainSocio = () => {
       >
         <Box>
           <Typography variant="h4" fontWeight="bold">
-            Dashboard de {organization.name_org}
+            Dashboard de {organization.nombre_osf}
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Gestiona tus proyectos y visualiza los estudiantes registrados.
@@ -250,8 +252,8 @@ const MainSocio = () => {
         >
           <MenuItem value="">Todos los proyectos</MenuItem>
           {projects.map((proj) => (
-            <MenuItem key={proj.project_id} value={proj.project_id}>
-              {proj.name}
+            <MenuItem key={proj.id_proyecto} value={proj.id_proyecto}>
+              {proj.nombre_proyecto}
             </MenuItem>
           ))}
         </TextField>
@@ -261,7 +263,7 @@ const MainSocio = () => {
       {selectedProject && (
         <Paper sx={{ p: 4, borderRadius: 3, mb: 4, backgroundColor: "#e0f7fa" }} elevation={3}>
           <Typography variant="h6" gutterBottom>
-            Códigos de Inscripción para {projects.find((p) => p.project_id === Number(selectedProject))?.name}
+            Códigos de Inscripción para {projects.find((p) => p.id_proyecto === Number(selectedProject))?.nombre_proyecto}
           </Typography>
 
           <Box sx={{ display: "flex", gap: 2, alignItems: "center", mt: 3, flexWrap: "wrap" }}>

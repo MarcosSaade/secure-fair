@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {  useState } from 'react';
 import {
   Box,
   Container,
@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff, Check, Close } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import logo from './Logo.png';
+import * as storageService from '../services/StorageService';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -116,27 +117,53 @@ const SignUp = () => {
 
     try {
       setTimeout(() => {
-        // Create auth data (username + password only)
-        const authData = {
-          username: formData.username,
-          password: formData.password,
-          createdAt: new Date().toISOString().split('T')[0],
-        };
+        const id_usuario = crypto.randomUUID();
+        const {username, password} = formData;
 
-        // Store auth data in localStorage
-        const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-        studentAccounts[formData.username] = {
-          ...studentAccounts[formData.username],
-          ...authData,
-        };
-        localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
+        const usuario = {
+          id_usuario,
+          username,
+          contraseña: password,
+          tipo: 'student',
+          activo: true
+        }
+        storageService.saveUsuario(id_usuario, usuario);
 
-        // Store in sessionStorage for current session
-        sessionStorage.setItem('username', formData.username);
-        sessionStorage.setItem('password', formData.password);
-        sessionStorage.setItem('type', 'student');
+        // Guardar en estudiantes (solo vínculo inicial)
+        storageService.saveEstudiante(id_usuario, {
+          id_usuario, // FK hacia usuarios
+        });
+
+        sessionStorage.setItem('user', JSON.stringify(usuario));
+        sessionStorage.setItem('password', password);
+        sessionStorage.setItem('username', username);
+        sessionStorage.setItem('tipo', 'student');
 
         setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo...');
+
+        // Create auth data (username + password only)
+       // const authData = {
+        //  username: formData.username,
+         // password: formData.password,
+         // createdAt: new Date().toISOString().split('T')[0],
+        //};
+
+        // Store auth data in localStorage
+        // When backend is ready, use user_id instead of usename.
+        // This should be replaced in all documents and components that use student data.
+     //   const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
+      //  studentAccounts[formData.username] = {
+        //  ...studentAccounts[formData.username],
+         // ...authData,
+        //};
+        //localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
+
+        // Store in sessionStorage for current session
+       // sessionStorage.setItem('username', formData.username);
+       // sessionStorage.setItem('password', formData.password);
+        //sessionStorage.setItem('type', 'student');
+
+       // setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo...');
 
         // Redirect after 1.5 seconds
         setTimeout(() => {

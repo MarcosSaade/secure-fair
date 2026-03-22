@@ -12,8 +12,8 @@ const StudentEnrollConfirm = () => {
   
 
   // Obtener proyecto y organización del estudiante
-  const enrolledProject = projects.find(p => p.project_id === studentData?.project_id);
-  const enrolledOrg = organizations.find(o => o.orgID === enrolledProject?.orgID);
+  const enrolledProject = projects.find(p => p.id_proyecto === studentData?.id_proyecto);
+  const enrolledOrg = organizations.find(o => o.id_organizacion === enrolledProject?.id_organizacion);
 
   const handleGoHome = () => {
     navigate("/signin"); 
@@ -41,7 +41,7 @@ const StudentEnrollConfirm = () => {
           <Box sx={{ mb: 4, color: "text.secondary" }}>
             {/* Texto principal más grande */}
             <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-              {`Has quedado inscrito en el proyecto "${enrolledProject.name}" de la organización "${enrolledOrg.name_org}".`}
+              {`Has quedado inscrito en el proyecto "${enrolledProject.nombre_proyecto}" de la organización "${enrolledOrg.nombre_osf}".`}
             </Typography>
 
             {/* Texto secundario más pequeño */}

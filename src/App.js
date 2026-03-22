@@ -6,7 +6,8 @@ import theme from './theme/theme';
 
 // Demo for the QR Scanner
 import DemoAccess from './pages/DemoAccess';
-
+// Dummies
+import {students as dummyStudents} from './pages/students';
 // ==================== LAYOUTS ====================
 import StudentLayout from './layouts/StudentLayout';
 import SocioLayout from './layouts/SocioLayout';
@@ -15,8 +16,6 @@ import AdminLayout from './layouts/AdminLayout';
 // ==================== AUTHENTICATION PAGES ====================
 import SignIn from './pages/SignIn';
 import Login from './pages/Login';
-
-
 
 // ==================== STUDENT PAGES ====================
 import StudentRegister from "./pages/student/StudentRegister";
@@ -45,8 +44,21 @@ const AdminImport = () => <Box sx={{ p: 4 }}>Import Data</Box>;
 const AdminExport = () => <Box sx={{ p: 4 }}>Export Data</Box>;
 const AdminProfile = () => <Box sx={{ p: 4 }}>Admin Profile</Box>;
 const NotFound = () => <Box sx={{ p: 4 }}>404 - Page Not Found</Box>;
+const STORAGE_KEY = "studentAccounts";
 
 function App() {
+
+  // Initialize dummy student accounts in localStorage if not already present
+    React.useEffect(() => {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+
+      // dummyStudents ya es un objeto, así que lo mezclamos directo
+      const merged = { ...stored, ...dummyStudents };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    }, []);
+
+    // Routes
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
