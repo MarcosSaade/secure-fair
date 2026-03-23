@@ -133,6 +133,32 @@ const StudentEnroll = () => {
         return;
       }
 
+      // UPDATE PROJECT SLOTS
+      const proyectos = JSON.parse(localStorage.getItem("proyectos")) || [];
+      const proyectoIndex = proyectos.findIndex(
+        (p) => p.id_proyecto === codeObj.id_proyecto
+      );
+      // Check available slots
+      if (proyectoIndex >= 0) {
+        const proyecto = proyectos[proyectoIndex];
+        const disponibles = proyecto.cupo_estudiantes - (proyecto.inscritos || 0);
+
+        if (disponibles <= 0) {
+          setValidationResult({
+            success: false,
+            message: "Este proyecto ya no tiene cupo disponible. Contacta al servicio social y al socio-formador para modificar el cupo en el proyecto.",
+          });
+          setValidating(false);
+          return;
+        }
+
+      // Slots available, increment inscritos
+      proyecto.inscritos = (proyecto.inscritos || 0) + 1;
+      localStorage.setItem("proyectos", JSON.stringify(proyectos));
+      window.dispatchEvent(new Event("projectsUpdated"));
+      }
+
+      // Mark code as used
       codeObj.is_used = true;
       codeObj.used_at = new Date().toISOString();
       codeObj.used_by = studentData.matricula;
@@ -140,16 +166,27 @@ const StudentEnroll = () => {
 
       localStorage.setItem("enrollmentCodes",JSON.stringify(savedCodes));
 
+      const estudiantes = storageService.getEstudiantes();
+      const currentStudent = estudiantes.find(est => est.id_usuario === user.id_usuario);
+
+      console.log("Current student before update:", currentStudent);
+      console.log('User info from sessionStorage:', user);
+      console.log('estudiantes from storageService:', estudiantes);
+
       const updatedStudent = {
-        ...studentData,
+        ...currentStudent,
+        id_usuario: user.id_usuario,
         id_proyecto: codeObj.id_proyecto,
-        id_organizacion: codeObj.socio_id,
+        id_organizacion: codeObj.id_organizacion,
       };
-      storageService.saveEstudiante(user.id_usuario, updatedStudent);
+      console.log(updatedStudent)
+      storageService.saveEstudiante(updatedStudent);
 
       sessionStorage.setItem("studentData", JSON.stringify(updatedStudent));
+      console.log("Disparando evento studentUpdated");
+      console.log('Verificando localStorage,', storageService.getEstudiantes());
 
-
+      window.dispatchEvent(new Event('studentUpdated')); 
 
 
       //const studentAccounts = JSON.parse(localStorage.getItem("studentAccounts")) || {};

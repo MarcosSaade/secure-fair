@@ -22,8 +22,9 @@ const StudentProfile = () => {
   const id_usuario = user?.id_usuario; 
   //const username = sessionStorage.getItem('username');
 
+  const currentStudent = JSON.parse(sessionStorage.getItem('studentData'));
   const estudiantes = storageService.getEstudiantes();
-  const studentData = estudiantes.find(est => est.id_usuario === user.id_usuario);
+  const studentData = currentStudent  || estudiantes.find(est => est.id_usuario === user.id_usuario);
 
   // Get complete student data from localStorage
   //const getStudentData = () => {
@@ -158,6 +159,7 @@ const StudentProfile = () => {
 
     const updatedStudent = {
       id_usuario,
+      username: formData.username,
       nombre: formData.nombre,
       apellidos: formData.apellidos,
       matricula: formData.matricula,
@@ -167,7 +169,8 @@ const StudentProfile = () => {
       hora_registro: formData.hora_registro,
     };
 
-    storageService.saveEstudiante(user.username, updatedStudent);
+    storageService.saveEstudiante(updatedStudent);
+    window.dispatchEvent(new Event('studentUpdated')); // Notify other tabs of the update
 
     //localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
     storageService.saveUsuario(id_usuario, { ...user, password: finalPassword });

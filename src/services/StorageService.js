@@ -1,5 +1,11 @@
 // src/services/storageService.js
+
+//import { students } from "../pages/students";
+
+//const dummies = Object.values(students);
 console.log(">>> storageService.js cargado <<<");
+
+
 const STORAGE_KEYS = {
   usuarios: "usuarios",
   estudiantes: "estudiantes",
@@ -20,6 +26,7 @@ export const getCollection = (key) => {
 export const saveToCollection = (key, id, data) => {
   const collection = getCollection(key);
   collection[id] = data;
+  console.log('Guardando en colección:', key, 'ID:', id, 'Data:', data);
   localStorage.setItem(STORAGE_KEYS[key], JSON.stringify(collection));
 };
 
@@ -34,10 +41,31 @@ export const deleteFromCollection = (key, id) => {
 // =============================
 
 // ---- ESTUDIANTES ----
-export const getEstudiantes = () => Object.values(getCollection("estudiantes"));
+export const getEstudiantes = () => {
+  const data = JSON.parse(localStorage.getItem('estudiantes'));
+  return data || [];
+};
 
-export const saveEstudiante = (username, data) => {
-  saveToCollection("estudiantes", username, data);
+export const saveEstudiante = (studentData) => {
+  if (Array.isArray(studentData)) {
+    console.error("saveEstudiante recibió un array, se esperaba un objeto:", studentData);
+    return;
+  }
+  const estudiantes = getEstudiantes();
+  console.log('Antes de guardad:', estudiantes);
+  const index = estudiantes.findIndex(est => String(est.id_usuario) === String(studentData.id_usuario));
+  if (index >= 0) {
+    estudiantes[index] = 
+      { ...estudiantes[index], ...studentData };
+  } else {
+      estudiantes.push(studentData);
+  }
+
+  console.log('estudiante nuevo:', studentData);
+  localStorage.setItem("estudiantes", JSON.stringify(estudiantes));
+
+  window.dispatchEvent(new Event("studentUpdated")); 
+
 };
 
 // ---- USUARIOS ----

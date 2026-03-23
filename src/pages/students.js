@@ -3,7 +3,7 @@
 
 export const students = {
   'juan123': {
-    user_id: 1,
+    id_usuario: 1,
     username: 'juan123',
     matricula: 'A01659876',
     nombre: 'Juan Pérez',
@@ -18,7 +18,7 @@ export const students = {
   },
 
   'maria456': {
-    user_id: 2,
+    id_usuario: 2,
     username: 'maria456',
     matricula: 'A01659877',
     nombre: 'María López',
@@ -33,7 +33,7 @@ export const students = {
   },
 
   'carlos789': {
-    user_id: 3,
+    id_usuario: 3,
     username: 'carlos789',
     matricula: 'A01659878',
     nombre: 'Carlos García',
@@ -48,7 +48,7 @@ export const students = {
   },
 
   'ana321': {
-    user_id: 4,
+    id_usuario: 4,
     username: 'ana321',
     matricula: 'A01659879',
     nombre: 'Ana Martínez',

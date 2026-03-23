@@ -130,7 +130,7 @@ const SignUp = () => {
         storageService.saveUsuario(id_usuario, usuario);
 
         // Guardar en estudiantes (solo vínculo inicial)
-        storageService.saveEstudiante(id_usuario, {
+        storageService.saveEstudiante({
           id_usuario, // FK hacia usuarios
         });
 

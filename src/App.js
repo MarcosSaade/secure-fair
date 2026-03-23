@@ -8,6 +8,9 @@ import theme from './theme/theme';
 import DemoAccess from './pages/DemoAccess';
 // Dummies
 import {students as dummyStudents} from './pages/students';
+import { projects as projectsData } from "./pages/projects";
+import { organizations as dummiesOrg } from "./pages/organization";
+
 // ==================== LAYOUTS ====================
 import StudentLayout from './layouts/StudentLayout';
 import SocioLayout from './layouts/SocioLayout';
@@ -44,20 +47,31 @@ const AdminImport = () => <Box sx={{ p: 4 }}>Import Data</Box>;
 const AdminExport = () => <Box sx={{ p: 4 }}>Export Data</Box>;
 const AdminProfile = () => <Box sx={{ p: 4 }}>Admin Profile</Box>;
 const NotFound = () => <Box sx={{ p: 4 }}>404 - Page Not Found</Box>;
-const STORAGE_KEY = "studentAccounts";
+//const STORAGE_KEY = "studentAccounts";
 
 function App() {
 
-  // Initialize dummy student accounts in localStorage if not already present
+    // Initialize dummy student accounts in localStorage if not already present
     React.useEffect(() => {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      // Inicializar solo si localStorage está vacío
+      if (!localStorage.getItem("estudiantes")) {
+        const estudiantesArray = Object.values(dummyStudents);
+        console.log("Guardando estudiantes dummy:", estudiantesArray);
+        localStorage.setItem("estudiantes", JSON.stringify(estudiantesArray));
+      }
 
-      // dummyStudents ya es un objeto, así que lo mezclamos directo
-      const merged = { ...stored, ...dummyStudents };
+      if (!localStorage.getItem("organizaciones")) {
+        localStorage.setItem("organizaciones", JSON.stringify(dummiesOrg));
+      }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      if (!localStorage.getItem("proyectos")) {
+        const proyectosIniciales = projectsData.map(p => ({
+          ...p,
+          inscritos: p.inscritos || 0
+        }));
+        localStorage.setItem("proyectos", JSON.stringify(proyectosIniciales));
+      }
     }, []);
-
     // Routes
   return (
     <ThemeProvider theme={theme}>

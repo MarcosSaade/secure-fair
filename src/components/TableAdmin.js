@@ -11,9 +11,9 @@ import {
   Typography
 } from "@mui/material";
 
+const TableAdmin = ({ students, projects, selectedProject }) => {
 
-const ProjectEnrolledStudents = ({ students, projects, selectedProject }) => {
-  
+
   if (!students || students.length === 0) {
     return (
       <Paper sx={{ borderRadius: 3 }}>
@@ -57,6 +57,7 @@ const ProjectEnrolledStudents = ({ students, projects, selectedProject }) => {
                   <TableCell>{student.correo}</TableCell>
                   <TableCell>{student.celular || "N/A"}</TableCell>
                   <TableCell>{student.carrera || "N/A"}</TableCell>
+               
                   <TableCell>{project ? project.nombre_proyecto : "N/A"}</TableCell>
                   <TableCell>{student.registered_at}</TableCell>
                 </TableRow>
@@ -69,4 +70,4 @@ const ProjectEnrolledStudents = ({ students, projects, selectedProject }) => {
   );
 };
 
-export default ProjectEnrolledStudents;
+export default TableAdmin;

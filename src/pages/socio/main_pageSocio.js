@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {  useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -24,7 +24,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 //import { students as studentsData } from "../students.js";
-import { projects as projectsData } from "../projects.js";
+//import { projects as projectsData } from "../projects.js";
 import { organizations as orgsData } from "../organization.js";
 import { enrollmentCodes as initialCodes } from "../enrollmentCodes.js";
 import ProjectEnrolledStudents from "../../components/ProjectEnrolledStudents.js";
@@ -52,51 +52,104 @@ const MainSocio = () => {
   // -------------------------
   // Proyectos de la organización
   // -------------------------
-  const projects = projectsData?.filter(
-    (proj) => proj.id_organizacion === Number(orgId)
-  ) || [];
+  //const projects = projectsData?.filter(
+   // (proj) => proj.id_organizacion === Number(orgId)
+  //) || [];
 
   // -------------------------
   // Convertir students (objeto → array)
   // -------------------------
   const [studentsArray, setStudentsArray] = useState([]);
+  const [studentsFromOrgProjects] = useState([]);
+
+
+
+  // Proyectos
+  const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-  const loadStudents = () => {
-   //const storedStudents = JSON.parse(localStorage.getItem("studentAccounts")) || {};
-   const storedStudents = storageService.getEstudiantes() || {};
-    setStudentsArray(Object.values(storedStudents));
-  };
+    const loadData = () => {
+      const studsRaw = storageService.getEstudiantes() || [];
+      const storedStudents = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
 
-  loadStudents();
+      console.log("Loaded students from storage:", storedStudents);
 
-  window.addEventListener("storage", loadStudents);
+      const storedProjects = storageService.getProyectos() || [];
 
-  return () => {
-    window.removeEventListener("storage", loadStudents);
-  };
-  }, []);
+      const orgProject = storedProjects.filter(
+        (proj) => Number(proj.id_organizacion) === Number(orgId)
+      );
+      setProjects(orgProject);
+
+      const orgStudents = storedStudents.filter(student =>
+        orgProject.some(proj => Number(proj.id_proyecto) === Number(student.id_proyecto))
+      );
+      setStudentsArray(orgStudents);
+    };
+     
+
+
+  //    const storedProjects = storageService.getProyectos() || [];
+   //   console.log("Loaded projects from storage:", storedProjects);
+  //    setProjects(storedProjects);
+   // };
+
+   // const loadProjects = () => {
+   //   const storedProjects = storageService.getProyectos();
+   //   const orgProjects = storedProjects.filter(
+   //     (proj) => proj.id_organizacion === Number(orgId)
+    //  );
+   //   setProjects(orgProjects);
+    //};
+    
+
+    //loadStudents();
+    //loadProjects();
+    loadData();
+
+    const handleUpdate = () => {
+      console.log("EVENT 'studentUpdated' recibido en MainSocio");
+      //loadStudents();
+      //loadProjects();
+      loadData();
+    };
+
+    window.addEventListener("projectsUpdated", handleUpdate);
+    window.addEventListener("studentUpdated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("projectsUpdated", handleUpdate);
+      window.removeEventListener("studentUpdated", handleUpdate);
+    };
+  }, [orgId]);
 
   // -------------------------
   // IDs de proyectos de la org
   // -------------------------
-  const projectIds = projects.map((proj) => proj.id_proyecto);
+
+
 
   // -------------------------
   // Estudiantes inscritos en proyectos de la org
   // -------------------------
-  const studentsFromOrgProjects = studentsArray.filter((student) =>
-    projectIds.includes(student.id_proyecto)
-  );
+ // const studentsFromOrgProjects = studentsArray.filter((student) =>
+   // projectIds.includes(Number(student.id_proyecto))
+  //);
+
+ // console.log("IDs de proyectos de la org:", projectIds);
+  //console.log('Estudiantes inscritos en proyectos de la org:', studentsFromOrgProjects);
 
   // -------------------------
   // Filtrar por proyecto seleccionado
   // -------------------------
-  const filteredStudents = selectedProject
-    ? studentsFromOrgProjects.filter(
-        (student) => student.id_proyecto === Number(selectedProject)
-      )
-    : studentsFromOrgProjects;
+  
+  const filteredStudents = React.useMemo(() => {
+   return selectedProject === ""
+      ? studentsArray
+      : studentsArray.filter(
+          s => Number(s.id_proyecto) === Number(selectedProject)
+        );
+  }, [studentsArray, selectedProject]);
 
   // -------------------------
   // Get codes for selected project
@@ -200,6 +253,10 @@ const MainSocio = () => {
       saveAs(blob, "estudiantes.xlsx");
     }
   };
+
+  console.log("RENDER MainSocio");
+  console.log("selectedProject:", selectedProject);
+  console.log("filteredStudents:", filteredStudents);
 
   return (
     <Box sx={{ p: 4, backgroundColor: "#f5f7fa", minHeight: "100vh" }}>
@@ -385,6 +442,10 @@ const MainSocio = () => {
           Estudiantes Registrados
         </Typography>
 
+        {console.log(
+            "MainSocio -> students filtrados:",
+            filteredStudents
+          )}
         <ProjectEnrolledStudents
           students={filteredStudents}
           projects={projects}

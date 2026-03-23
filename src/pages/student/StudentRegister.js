@@ -58,6 +58,7 @@
     };
 
     const horasDisponibles = [
+      "7:00 AM",
       "8:00 AM",
       "8:30 AM",
       "9:00 AM",
@@ -125,6 +126,7 @@
     // Recuperar el usuario actual desde sessionStorage
     const user = JSON.parse(sessionStorage.getItem("user"));
     const id_usuario = user?.id_usuario;
+    const username = user?.username;
 
     if (!id_usuario) {
       setErrors({ general: "No se encontró el usuario en sesión" });
@@ -137,9 +139,11 @@
       return;
     }
 
+
     // Crear objeto estudiante con datos del formulario
     const studentData = {
       id_usuario, // FK hacia usuarios
+      username,
       nombre: formData.nombre,
       apellidos: formData.apellidos,
       matricula: formData.matricula,
@@ -152,7 +156,10 @@
     };
 
     // Guardar en storageService (colección estudiantes)
-    storageService.saveEstudiante(id_usuario, studentData);
+    console.log("Antes de guardar:", localStorage.getItem("estudiantes"));
+    storageService.saveEstudiante(studentData);
+    console.log("Raw colección estudiantes:", localStorage.getItem("estudiantes"));
+    
 
     // Guardar en sessionStorage para uso inmediato en StudentQR
     sessionStorage.setItem("studentData", JSON.stringify(studentData));

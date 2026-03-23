@@ -33,7 +33,7 @@ export const getCurrentStudent = () => {
 
 export const getStudentByMatricula = (matricula) => {
   const estudiantes = storageService.getEstudiantes();
-  return estudiantes.find(est => est.matricula === matricula) || null;
+  return estudiantes.find(est => est.matricula?.trim().toUpperCase() === matricula?.trim().toUpperCase());
 };
 
 //export const updateStudentProject = (project_id, orgID) => {

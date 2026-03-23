@@ -101,6 +101,7 @@ const CheckIn = () => {
 
       if (code) {
         // QR found, stop scanning and process
+        console.log("QR Code detected:", code.data);
         stopCamera();
         processQRData(code.data);
       } else if (cameraActive) {
@@ -160,15 +161,39 @@ const CheckIn = () => {
 
   // Process scanned QR data
   const processQRData = async (data) => {
+    console.log("Procesando QR data:", data);
     try {
       // Parse the JSON from QR
       const qrData = JSON.parse(data);
+      console.log("Datos parseados del QR:", qrData);
 
       // Validate QR data structure
       if (!qrData.username || !qrData.matricula) {
         setCheckInResult('error');
         setErrorMessage('QR inválido: datos incompletos');
         setScannedData(null);
+        return;
+      }
+
+      // Look up students
+     // const currentStudent = JSON.parse(sessionStorage.getItem("studentData"));
+     // const estudiantes = storageService.getEstudiantes();
+
+      
+     // const estudiante = currentStudent
+    //     && currentStudent.matricula?.trim().toUpperCase() === qrData.matricula?.trim().toUpperCase()
+    //    ? currentStudent 
+     //   : estudiantes.find(s => s.matricula?.trim().toUpperCase() === qrData.matricula?.trim().toUpperCase());
+      const estudiantes = storageService.getEstudiantes();
+      const estudiante = estudiantes.find(s => s.matricula?.trim().toUpperCase() === qrData.matricula?.trim().toUpperCase());
+      console.log("Estudiante encontrado para matrícula:", estudiante);
+      console.log("Estudiantes en storage:", storageService.getEstudiantes());
+
+
+      if (!estudiante) {
+        setCheckInResult('error');
+        setErrorMessage('Estudiante no registrado');
+        setScannedData(qrData);
         return;
       }
 
@@ -209,7 +234,7 @@ const CheckIn = () => {
       const updatedCheckedIn = await getCheckedInStudentsToday();
       setCheckedInStudents(updatedCheckedIn);
 
-      setScannedData(qrData);
+      setScannedData(estudiante);
       setCheckInResult('success');
       setErrorMessage('');
     } catch (err) {
@@ -227,9 +252,12 @@ const CheckIn = () => {
       return;
     }
 
+    console.log("Procesando entrada manual para matrícula:", matricula);
+
     try {
       // Get student data using service
       const student = await getStudentByMatricula(matricula);
+      console.log(storageService.getEstudiantes())
 
       if (!student) {
         setErrorMessage('Estudiante no encontrado');
@@ -238,8 +266,10 @@ const CheckIn = () => {
         return;
       }
 
-      const usuarios = storageService.getUsuarios();
-      const usuario = usuarios.find(u => u.id_usuario === student.id_usuario);
+     // const usuarios = storageService.getUsuarios();
+      //const usuario = usuarios.find(u => u.id_usuario === student.id_usuario);
+     // const studentData = JSON.parse(sessionStorage.getItem("studentData")) || student;
+      const usuario  = JSON.parse(sessionStorage.getItem('user'));
 
       // Create mock QR data from student info
       const mockData = {

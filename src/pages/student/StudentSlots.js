@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Typography, TextField, MenuItem, Button, useTheme } from "@mui/material";
-import { projects } from "../projects";
+//import { projects } from "../projects";
 import { organizations } from "../organization";
 import ProjectsTable from "../../components/ProjectsTable";
 
@@ -10,6 +10,19 @@ const StudentSlots = () => {
   const theme = useTheme();
   const [search, setSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState("");
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    const loadProjects = () => {
+      const storedProjects = JSON.parse(localStorage.getItem("proyectos")) || [];
+      setProjects(storedProjects);
+    };
+
+    loadProjects();
+
+    window.addEventListener("projectsUpdated", loadProjects);
+    return () => window.removeEventListener("projectsUpdated", loadProjects);
+  }, []);
 
   // Navigate to EnrollForm
   const handleRegister = () => {
