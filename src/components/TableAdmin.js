@@ -11,7 +11,7 @@ import {
   Typography
 } from "@mui/material";
 
-const TableAdmin = ({ students, projects, selectedProject }) => {
+const TableAdmin = ({ students, projects, organizations, selectedProject }) => {
 
 
   if (!students || students.length === 0) {
@@ -37,6 +37,7 @@ const TableAdmin = ({ students, projects, selectedProject }) => {
               <TableCell><strong>Correo</strong></TableCell>
               <TableCell><strong>Celular</strong></TableCell>
               <TableCell><strong>Carrera</strong></TableCell>
+              <TableCell><strong>Organización</strong></TableCell>
               <TableCell><strong>Proyecto</strong></TableCell>
               <TableCell><strong>Fecha Registro</strong></TableCell>
             </TableRow>
@@ -48,6 +49,16 @@ const TableAdmin = ({ students, projects, selectedProject }) => {
                 (proj) => proj.id_proyecto === student.id_proyecto
               );
 
+              console.log("Student id_organizacion:", student.id_organizacion, typeof student.id_organizacion);
+              console.log("Organizations:", organizations);
+
+              const organization = organizations?.find(
+                (org) => {
+                  console.log("Comparando:", org.id_organizacion, "===", student.id_organizacion, "=>", org.id_organizacion === student.id_organizacion);
+                  return org.id_organizacion === student.id_organizacion;
+                }
+              );
+
               const nombreCompleto = `${student.nombre} ${student.apellidos || ""}`.trim();
 
               return (
@@ -57,7 +68,7 @@ const TableAdmin = ({ students, projects, selectedProject }) => {
                   <TableCell>{student.correo}</TableCell>
                   <TableCell>{student.celular || "N/A"}</TableCell>
                   <TableCell>{student.carrera || "N/A"}</TableCell>
-               
+                  <TableCell>{organization ? organization.nombre_osf : "N/A"}</TableCell>
                   <TableCell>{project ? project.nombre_proyecto : "N/A"}</TableCell>
                   <TableCell>{student.registered_at}</TableCell>
                 </TableRow>

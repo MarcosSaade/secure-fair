@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -18,13 +18,11 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 
-import { organizations } from "../organization";
-import { projects } from "../projects";
+import * as storageService from '../../services/StorageService';
 
 export default function EditOrganization() {
-  //  Estados editables
-  const [orgList, setOrgList] = useState(organizations);
-  const [projectList, setProjectList] = useState(projects);
+  const [orgList, setOrgList] = useState([]);
+  const [projectList, setProjectList] = useState([]);
 
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
@@ -35,83 +33,99 @@ export default function EditOrganization() {
   const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
-    org_id: "",
-    name: "",
-    description: "",
-    rules: "",
-    capacity: "",
+    id_organizacion: "",
+    nombre_proyecto: "",
+    descripcion_proyecto: "",
+    cupo_estudiantes: "",
   });
 
   const [newOrgName, setNewOrgName] = useState("");
 
-  //  FILTRO
+  // ✅ Cargar datos de localStorage
+  useEffect(() => {
+    const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
+    const projs = storageService.getProyectos() || [];
+    
+    setOrgList(orgs);
+    setProjectList(projs);
+  }, []);
+
+  // FILTRO
   const filteredProjects = projectList.filter((project) => {
     return (
-      (selectedOrg === "" || project.orgID === Number(selectedOrg)) &&
-      (selectedProject === "" || project.name === selectedProject)
+      (selectedOrg === "" || Number(project.id_organizacion) === Number(selectedOrg)) &&
+      (selectedProject === "" || project.nombre_proyecto === selectedProject)
     );
   });
 
-  //  AGREGAR PROYECTO
+  // AGREGAR PROYECTO
   const handleAddProject = () => {
     setEditingId(null);
     setFormData({
-      orgID: "",
-      name: "",
-      description: "",
-      rules: "",
-      capacity: "",
+      id_organizacion: "",
+      nombre_proyecto: "",
+      descripcion_proyecto: "",
+      cupo_estudiantes: "",
+      duracion: "",
+      horas_acreditadas: 0,
+      lugar: "",
+      inscritos: 0,
     });
     setOpenProject(true);
   };
 
-  //  EDITAR PROYECTO
+  // EDITAR PROYECTO
   const handleEditProject = (project) => {
-    setEditingId(project.project_id);
+    setEditingId(project.id_proyecto);
     setFormData(project);
     setOpenProject(true);
   };
 
-  //  ELIMINAR PROYECTO
+  // ELIMINAR PROYECTO
   const handleDeleteProject = (id) => {
-    setProjectList(projectList.filter((p) => p.project_id !== id));
+    const updated = projectList.filter((p) => p.id_proyecto !== id);
+    setProjectList(updated);
+    localStorage.setItem("proyectos", JSON.stringify(updated));
   };
 
-  //  GUARDAR PROYECTO
+  // GUARDAR PROYECTO
   const handleSaveProject = () => {
-    if (!formData.name || !formData.orgID) return;
+    if (!formData.nombre_proyecto || !formData.id_organizacion) return;
 
+    let updated;
     if (editingId) {
-      setProjectList(
-        projectList.map((p) =>
-          p.project_id === editingId ? { ...formData } : p
-        )
+      updated = projectList.map((p) =>
+        p.id_proyecto === editingId ? { ...formData } : p
       );
     } else {
-      setProjectList([
+      updated = [
         ...projectList,
         {
           ...formData,
-          project_id: Date.now(),
-          orgID: Number(formData.orgID),
+          id_proyecto: Math.max(...projectList.map(p => p.id_proyecto), 0) + 1,
+          id_organizacion: Number(formData.id_organizacion),
         },
-      ]);
+      ];
     }
 
+    setProjectList(updated);
+    localStorage.setItem("proyectos", JSON.stringify(updated));
+    window.dispatchEvent(new Event('projectsUpdated'));
     setOpenProject(false);
   };
 
-  //  AGREGAR ORGANIZACIÓN
+  // AGREGAR ORGANIZACIÓN
   const handleSaveOrganization = () => {
     if (!newOrgName.trim()) return;
 
     const newOrg = {
-      org_id: Date.now(),
-      name_org: newOrgName,
-      created_at: new Date().toISOString().split("T")[0],
+      id_organizacion: Math.max(...orgList.map(o => o.id_organizacion), 0) + 1,
+      nombre_osf: newOrgName,
     };
 
-    setOrgList([...orgList, newOrg]);
+    const updated = [...orgList, newOrg];
+    setOrgList(updated);
+    localStorage.setItem("organizaciones", JSON.stringify(updated));
     setNewOrgName("");
     setOpenOrg(false);
   };
@@ -119,20 +133,20 @@ export default function EditOrganization() {
   // COLUMNAS
   const columns = [
     {
-      field: "organization",
+      field: "id_organizacion",
       headerName: "Organización",
       flex: 1,
       renderCell: (params) => {
         const org = orgList.find(
-          (o) => o.orgID === params.row.orgID
+          (o) => o.id_organizacion === params.row.id_organizacion
         );
-        return org ? org.name_org : "";
+        return org ? org.nombre_osf : "N/A";
       },
     },
-    { field: "name", headerName: "Proyecto", flex: 1 },
-    { field: "description", headerName: "Descripción", flex: 1 },
-    { field: "rules", headerName: "Reglas", flex: 1 },
-    { field: "capacity", headerName: "Capacidad", flex: 1 },
+    { field: "nombre_proyecto", headerName: "Proyecto", flex: 1 },
+    { field: "descripcion_proyecto", headerName: "Descripción", flex: 1 },
+    { field: "cupo_estudiantes", headerName: "Capacidad", flex: 1 },
+    { field: "inscritos", headerName: "Inscritos", flex: 1 },
     {
       field: "actions",
       headerName: "Acciones",
@@ -143,17 +157,15 @@ export default function EditOrganization() {
             size="small"
             startIcon={<EditIcon />}
             onClick={() => handleEditProject(params.row)}
-          >
-          </Button>
+          />
           <Button
             size="small"
             color="error"
             startIcon={<DeleteIcon />}
             onClick={() =>
-              handleDeleteProject(params.row.project_id)
+              handleDeleteProject(params.row.id_proyecto)
             }
-          >
-          </Button>
+          />
         </>
       ),
     },
@@ -176,8 +188,8 @@ export default function EditOrganization() {
           >
             <MenuItem value="">Todas</MenuItem>
             {orgList.map((org) => (
-              <MenuItem key={org.orgID} value={org.orgID}>
-                {org.name_org}
+              <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
+                {org.nombre_osf}
               </MenuItem>
             ))}
           </Select>
@@ -192,8 +204,8 @@ export default function EditOrganization() {
           >
             <MenuItem value="">Todos</MenuItem>
             {projectList.map((project) => (
-              <MenuItem key={project.project_id} value={project.name}>
-                {project.name}
+              <MenuItem key={project.id_proyecto} value={project.nombre_proyecto}>
+                {project.nombre_proyecto}
               </MenuItem>
             ))}
           </Select>
@@ -221,7 +233,7 @@ export default function EditOrganization() {
         <DataGrid
           rows={filteredProjects}
           columns={columns}
-          getRowId={(row) => row.project_id}
+          getRowId={(row) => row.id_proyecto}
           pageSizeOptions={[5]}
           initialState={{
             pagination: { paginationModel: { pageSize: 5, page: 0 } },
@@ -239,15 +251,15 @@ export default function EditOrganization() {
           <FormControl fullWidth>
             <InputLabel>Organización</InputLabel>
             <Select
-              value={formData.org_id}
+              value={formData.id_organizacion}
               label="Organización"
               onChange={(e) =>
-                setFormData({ ...formData, org_id: e.target.value })
+                setFormData({ ...formData, id_organizacion: e.target.value })
               }
             >
               {orgList.map((org) => (
-                <MenuItem key={org.org_id} value={org.org_id}>
-                  {org.name_org}
+                <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
+                  {org.nombre_osf}
                 </MenuItem>
               ))}
             </Select>
@@ -256,27 +268,18 @@ export default function EditOrganization() {
           <TextField
             label="Nombre"
             fullWidth
-            value={formData.name}
+            value={formData.nombre_proyecto}
             onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
+              setFormData({ ...formData, nombre_proyecto: e.target.value })
             }
           />
 
           <TextField
             label="Descripción"
             fullWidth
-            value={formData.description}
+            value={formData.descripcion_proyecto}
             onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-          />
-
-          <TextField
-            label="Reglas"
-            fullWidth
-            value={formData.rules}
-            onChange={(e) =>
-              setFormData({ ...formData, rules: e.target.value })
+              setFormData({ ...formData, descripcion_proyecto: e.target.value })
             }
           />
 
@@ -284,9 +287,37 @@ export default function EditOrganization() {
             label="Capacidad"
             type="number"
             fullWidth
-            value={formData.capacity}
+            value={formData.cupo_estudiantes}
             onChange={(e) =>
-              setFormData({ ...formData, capacity: e.target.value })
+              setFormData({ ...formData, cupo_estudiantes: Number(e.target.value) })
+            }
+          />
+
+          <TextField
+            label="Duración"
+            fullWidth
+            value={formData.duracion || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, duracion: e.target.value })
+            }
+          />
+
+          <TextField
+            label="Lugar"
+            fullWidth
+            value={formData.lugar || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, lugar: e.target.value })
+            }
+          />
+
+          <TextField
+            label="Horas Acreditadas"
+            type="number"
+            fullWidth
+            value={formData.horas_acreditadas || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, horas_acreditadas: Number(e.target.value) })
             }
           />
         </DialogContent>

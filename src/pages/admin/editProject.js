@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -17,32 +17,34 @@ import {
   MenuItem
 } from "@mui/material";
 
-import { organizations } from "../organization";
-import { projects as projectsData } from "../projects";
+import * as storageService from '../../services/StorageService';
 
 const EditProject = () => {
-    const [projects, setProjects] = useState(
-    Object.entries(projectsData).map(([key, value]) => ({
-      id: key,
-      name: key,
-      ...value
-    }))
-  );
+  const [projects, setProjects] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
   const [editingProject, setEditingProject] = useState(null);
   const [open, setOpen] = useState(false);
-
   const [isCreating, setIsCreating] = useState(false);
 
-  //  FILTRADO
+  // * Cargar datos de localStorage
+  useEffect(() => {
+    const storedProjects = storageService.getProyectos() || [];
+    const storedOrgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
+    
+    setProjects(storedProjects);
+    setOrganizations(storedOrgs);
+  }, []);
+
+  // FILTRADO
   const filteredProjects = projects.filter((project) => {
     const orgMatch = selectedOrg
-      ? project.organization === selectedOrg
+      ? project.id_organizacion === Number(selectedOrg)
       : true;
 
     const projectMatch = selectedProject
-      ? project.name === selectedProject
+      ? project.id_proyecto === Number(selectedProject)
       : true;
 
     return orgMatch && projectMatch;
@@ -50,22 +52,29 @@ const EditProject = () => {
 
   // ELIMINAR
   const handleDelete = (id) => {
-    setProjects(projects.filter((project) => project.id !== id));
+    const updated = projects.filter((project) => project.id_proyecto !== id);
+    setProjects(updated);
+    localStorage.setItem("proyectos", JSON.stringify(updated));
   };
 
-  //  EDITAR
+  // EDITAR
   const handleEdit = (project) => {
-    setEditingProject(project);
+    setEditingProject({ ...project });
     setOpen(true);
   };
 
   const handleCreate = () => {
+    const newId = Math.max(...projects.map(p => p.id_proyecto), 0) + 1;
     setEditingProject({
-      id: Date.now().toString(),
-      name: "",
-      organization: "",
-      capacity: 0,
-      registered: 0
+      id_proyecto: newId,
+      nombre_proyecto: "",
+      id_organizacion: "",
+      cupo_estudiantes: 0,
+      inscritos: 0,
+      descripcion_proyecto: "",
+      duracion: "",
+      horas_acreditadas: 0,
+      lugar: ""
     });
     setIsCreating(true);
     setOpen(true);
@@ -76,13 +85,21 @@ const EditProject = () => {
       setProjects([...projects, editingProject]);
     } else {
       const updated = projects.map((project) =>
-        project.id === editingProject.id ? editingProject : project
+        project.id_proyecto === editingProject.id_proyecto ? editingProject : project
       );
       setProjects(updated);
     }
-
+    
+    localStorage.setItem("proyectos", JSON.stringify(isCreating ? [...projects, editingProject] : projects));
     setOpen(false);
     setIsCreating(false);
+    window.dispatchEvent(new Event('projectsUpdated'));
+  };
+
+  // Obtener nombre de organización por ID
+  const getOrgName = (orgId) => {
+    const org = organizations.find(o => o.id_organizacion === orgId);
+    return org ? org.nombre_osf : "N/A";
   };
 
   return (
@@ -101,7 +118,7 @@ const EditProject = () => {
         </Button>
       </Box>
 
-      {/*  FILTROS */}
+      {/* FILTROS */}
       <Box display="flex" gap={2} mb={3}>
         <TextField
           select
@@ -112,8 +129,8 @@ const EditProject = () => {
         >
           <MenuItem value="">Todas</MenuItem>
           {organizations.map((org) => (
-            <MenuItem key={org.orgID} value={org.name_org}>
-              {org.name_org}
+            <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
+              {org.nombre_osf}
             </MenuItem>
           ))}
         </TextField>
@@ -127,14 +144,14 @@ const EditProject = () => {
         >
           <MenuItem value="">Todos</MenuItem>
           {projects.map((project) => (
-            <MenuItem key={project.id} value={project.name}>
-              {project.name}
+            <MenuItem key={project.id_proyecto} value={project.id_proyecto}>
+              {project.nombre_proyecto}
             </MenuItem>
           ))}
         </TextField>
       </Box>
 
-      {/*  TABLA */}
+      {/* TABLA */}
       <Paper elevation={3}>
         <Table>
           <TableHead>
@@ -142,17 +159,17 @@ const EditProject = () => {
               <TableCell><strong>Organización</strong></TableCell>
               <TableCell><strong>Proyecto</strong></TableCell>
               <TableCell><strong>Cupo</strong></TableCell>
-              <TableCell><strong>Registrados</strong></TableCell>
+              <TableCell><strong>Inscritos</strong></TableCell>
               <TableCell><strong>Acciones</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredProjects.map((project) => (
-              <TableRow key={project.id}>
-                <TableCell>{project.organization}</TableCell>
-                <TableCell>{project.name}</TableCell>
-                <TableCell>{project.capacity}</TableCell>
-                <TableCell>{project.registered}</TableCell>
+              <TableRow key={project.id_proyecto}>
+                <TableCell>{getOrgName(project.id_organizacion)}</TableCell>
+                <TableCell>{project.nombre_proyecto}</TableCell>
+                <TableCell>{project.cupo_estudiantes}</TableCell>
+                <TableCell>{project.inscritos}</TableCell>
                 <TableCell>
                   <Button
                     variant="contained"
@@ -166,7 +183,7 @@ const EditProject = () => {
                     variant="outlined"
                     color="error"
                     size="small"
-                    onClick={() => handleDelete(project.id)}
+                    onClick={() => handleDelete(project.id_proyecto)}
                   >
                     Eliminar
                   </Button>
@@ -177,19 +194,19 @@ const EditProject = () => {
         </Table>
       </Paper>
 
-      {/*  MODAL */}
+      {/* MODAL */}
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>
-            {isCreating ? "Agregar Proyecto" : "Editar Proyecto"}
-          </DialogTitle>
+          {isCreating ? "Agregar Proyecto" : "Editar Proyecto"}
+        </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
           <TextField
             label="Nombre del Proyecto"
-            value={editingProject?.name || ""}
+            value={editingProject?.nombre_proyecto || ""}
             onChange={(e) =>
               setEditingProject({
                 ...editingProject,
-                name: e.target.value
+                nombre_proyecto: e.target.value
               })
             }
           />
@@ -197,17 +214,18 @@ const EditProject = () => {
           <TextField
             select
             label="Organización"
-            value={editingProject?.organization || ""}
+            value={editingProject?.id_organizacion || ""}
             onChange={(e) =>
               setEditingProject({
                 ...editingProject,
-                organization: e.target.value
+                id_organizacion: Number(e.target.value)
               })
             }
           >
+            <MenuItem value="">Selecciona una organización</MenuItem>
             {organizations.map((org) => (
-              <MenuItem key={org.orgID} value={org.name_org}>
-                {org.name_org}
+              <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
+                {org.nombre_osf}
               </MenuItem>
             ))}
           </TextField>
@@ -215,23 +233,36 @@ const EditProject = () => {
           <TextField
             type="number"
             label="Cupo"
-            value={editingProject?.capacity || ""}
+            value={editingProject?.cupo_estudiantes || ""}
             onChange={(e) =>
               setEditingProject({
                 ...editingProject,
-                capacity: Number(e.target.value)
+                cupo_estudiantes: Number(e.target.value)
               })
             }
           />
 
           <TextField
             type="number"
-            label="Registrados"
-            value={editingProject?.registered || ""}
+            label="Inscritos"
+            value={editingProject?.inscritos || ""}
             onChange={(e) =>
               setEditingProject({
                 ...editingProject,
-                registered: Number(e.target.value)
+                inscritos: Number(e.target.value)
+              })
+            }
+          />
+
+          <TextField
+            label="Descripción"
+            multiline
+            rows={3}
+            value={editingProject?.descripcion_proyecto || ""}
+            onChange={(e) =>
+              setEditingProject({
+                ...editingProject,
+                descripcion_proyecto: e.target.value
               })
             }
           />

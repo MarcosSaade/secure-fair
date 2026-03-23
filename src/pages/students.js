@@ -57,7 +57,7 @@ export const students = {
     celular: '555-3456',
     hora_registro: '9:30 AM',
     id_proyecto: 4,
-    id_organizacion: 4,
+    id_organizacion: 1,
     registered_at: '2024-04-05',
     checked_in_at: null
   }

@@ -73,133 +73,125 @@ const StudentProfile = () => {
     }));
   };
 
-  const handleSaveChanges = (e) => {
-    e.preventDefault();
-    setMessage({ type: '', text: '' });
+const handleSaveChanges = (e) => {
+  e.preventDefault();
+  setMessage({ type: '', text: '' });
 
-    const matriculaRegex = /^A0\d{7}$/;
+  const matriculaRegex = /^A0\d{7}$/;
 
-    if (!matriculaRegex.test(formData.matricula)) {
-      setMessage({
-        type: 'error',
-        text: 'La matrícula debe comenzar con A0 y tener 9 caracteres (Ej: A01234567)',
-      });
+  if (!matriculaRegex.test(formData.matricula)) {
+    setMessage({
+      type: 'error',
+      text: 'La matrícula debe comenzar con A0 y tener 9 caracteres (Ej: A01234567)',
+    });
+    return;
+  }
+
+  if (!formData.nombre.trim()) {
+    setMessage({ type: 'error', text: 'El nombre es requerido' });
+    return;
+  }
+  if (!formData.matricula.trim()) {
+    setMessage({ type: 'error', text: 'La matrícula es requerida' });
+    return;
+  }
+  if (!formData.carrera.trim()) {
+    setMessage({ type: 'error', text: 'La carrera es requerida' });
+    return;
+  }
+
+  if (
+    !formData.correo.trim() ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo) ||
+    /@tec\.mx$/i.test(formData.correo)
+  ) {
+    setMessage({ type: 'error', text: 'Email inválido o no puede ser @tec.mx' });
+    return;
+  }
+
+  if (!formData.celular.trim()) {
+    setMessage({ type: 'error', text: 'El celular es requerido' });
+    return;
+  }
+
+  if (formData.newPassword.trim()) {
+    const pw = formData.newPassword;
+    if (pw.length < 12) {
+      setMessage({ type: 'error', text: 'La contraseña debe tener al menos 12 caracteres' });
       return;
     }
-
-    if (!formData.nombre.trim()) {
-      setMessage({ type: 'error', text: 'El nombre es requerido' });
+    if (!/[A-Z]/.test(pw)) {
+      setMessage({ type: 'error', text: 'La contraseña debe contener mayúsculas' });
       return;
     }
-    if (!formData.matricula.trim()) {
-      setMessage({ type: 'error', text: 'La matrícula es requerida' });
+    if (!/[0-9]/.test(pw)) {
+      setMessage({ type: 'error', text: 'La contraseña debe contener números' });
       return;
     }
-    if (!formData.carrera.trim()) {
-      setMessage({ type: 'error', text: 'La carrera es requerida' });
+    if (!/[ !"#$%&'()*+,-./:;<=>?@[\\\]^_`{|}~]/.test(pw)) {
+      setMessage({ type: 'error', text: 'La contraseña debe contener caracteres especiales' });
       return;
     }
-
-    // Email must be valid and NOT @tec.mx
-    if (
-      !formData.correo.trim() ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo) ||
-      /@tec\.mx$/i.test(formData.correo)
-    ) {
-      setMessage({ type: 'error', text: 'Email inválido o no puede ser @tec.mx' });
+    if (pw !== formData.confirmNewPassword) {
+      setMessage({ type: 'error', text: 'Las contraseñas nuevas no coinciden' });
       return;
     }
+  }
 
-    if (!formData.celular.trim()) {
-      setMessage({ type: 'error', text: 'El celular es requerido' });
-      return;
-    }
+  const finalPassword = formData.newPassword.trim() ? formData.newPassword : formData.password;
 
-    // Validate new password if provided
-    if (formData.newPassword.trim()) {
-      const pw = formData.newPassword;
-      if (pw.length < 12) {
-        setMessage({ type: 'error', text: 'La contraseña debe tener al menos 12 caracteres' });
-        return;
-      }
-      if (!/[A-Z]/.test(pw)) {
-        setMessage({ type: 'error', text: 'La contraseña debe contener mayúsculas' });
-        return;
-      }
-      if (!/[0-9]/.test(pw)) {
-        setMessage({ type: 'error', text: 'La contraseña debe contener números' });
-        return;
-      }
-      if (!/[ !"#$%&'()*+,-./:;<=>?@[\\\]^_`{|}~]/.test(pw)) {
-        setMessage({ type: 'error', text: 'La contraseña debe contener caracteres especiales' });
-        return;
-      }
-      if (pw !== formData.confirmNewPassword) {
-        setMessage({ type: 'error', text: 'Las contraseñas nuevas no coinciden' });
-        return;
-      }
-    }
-
-    // Determine final password
-    const finalPassword = formData.newPassword.trim() ? formData.newPassword : formData.password;
-
-    // Update localStorage
-  //  const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-  //  studentAccounts[username] = {
-  //    ...studentAccounts[username],
-  //    username: formData.username,
-  //    password: finalPassword,
-   //   nombre: formData.nombre,
-   //   matricula: formData.matricula,
-  //    carrera: formData.carrera,
-  //    correo: formData.correo,
-  //    celular: formData.celular,
-    //  hora_registro: formData.hora_registro,
-    //};
-
-    const updatedStudent = {
-      id_usuario,
-      username: formData.username,
+  // ✅ ARREGLADO: Obtener el estudiante completo de localStorage
+  const estudiantesRaw = storageService.getEstudiantes() || [];
+  const estudiantes = Array.isArray(estudiantesRaw) ? estudiantesRaw : Object.values(estudiantesRaw);
+  
+  // Buscar el estudiante por id_usuario
+  const studentIndex = estudiantes.findIndex(est => est.id_usuario === id_usuario);
+  
+  if (studentIndex !== -1) {
+    // ✅ Actualizar manteniendo todos los campos originales
+    estudiantes[studentIndex] = {
+      ...estudiantes[studentIndex],
       nombre: formData.nombre,
-      apellidos: formData.apellidos,
+      apellidos: formData.apellidos || '',
       matricula: formData.matricula,
       carrera: formData.carrera,
       correo: formData.correo,
       celular: formData.celular,
       hora_registro: formData.hora_registro,
+      username: formData.username,
     };
 
-    storageService.saveEstudiante(updatedStudent);
-    window.dispatchEvent(new Event('studentUpdated')); // Notify other tabs of the update
+    // Guardar en localStorage
+    localStorage.setItem('estudiantes', JSON.stringify(estudiantes));
+    console.log("Estudiante actualizado:", estudiantes[studentIndex]);
+  }
 
-    //localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
-    storageService.saveUsuario(id_usuario, { ...user, password: finalPassword });
+  // Actualizar usuario
+  storageService.saveUsuario(id_usuario, { ...user, password: finalPassword });
 
-    sessionStorage.setItem('studentData', JSON.stringify(updatedStudent));
-    sessionStorage.setItem('user', JSON.stringify({ ...user, password: finalPassword }));
-    
+  // Actualizar sessionStorage
+  sessionStorage.setItem('studentData', JSON.stringify(estudiantes[studentIndex]));
+  sessionStorage.setItem('user', JSON.stringify({ ...user, password: finalPassword }));
 
-    // Update sessionStorage
-   // sessionStorage.setItem('studentData', JSON.stringify(studentAccounts[username]));
-   // sessionStorage.setItem('password', finalPassword);
+  // Actualizar formData
+  setFormData(prev => ({
+    ...prev,
+    password: finalPassword,
+    newPassword: '',
+    confirmNewPassword: '',
+  }));
 
-    // Update formData state
-    setFormData(prev => ({
-      ...prev,
-      password: finalPassword,
-      newPassword: '',
-      confirmNewPassword: '',
-    }));
+  setMessage({
+    type: 'success',
+    text: formData.newPassword
+      ? 'Perfil actualizado. Contraseña cambiada exitosamente.'
+      : 'Perfil actualizado exitosamente.',
+  });
 
-    setMessage({
-      type: 'success',
-      text: formData.newPassword
-        ? 'Perfil actualizado. Contraseña cambiada exitosamente.'
-        : 'Perfil actualizado exitosamente.',
-    });
-
-    setEditMode(false);
-  };
+  // Disparar evento para notificar cambios
+  window.dispatchEvent(new Event('studentUpdated'));
+  setEditMode(false);
+};
 
   if (!studentData) {
     return (

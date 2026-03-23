@@ -203,6 +203,7 @@ const MainPage = () => {
         <TableAdmin
         students={filteredStudents}
         projects={projects}
+        organizations={organizaciones}
          selectedProject={selectedProject} />
       </Box>
 
