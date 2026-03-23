@@ -3,7 +3,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { authService } from '../authService';
 import { tokenStorage } from '../../utils/tokenStorage';
 
 // Mock the tokenStorage module
