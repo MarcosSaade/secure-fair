@@ -42,18 +42,16 @@ services:
     networks:
       - securefair-network
 
-  # React Frontend (Vite + TypeScript)
+  # React Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        # VITE_* vars are baked into the bundle at build time.
-        # For production, replace localhost with a real hostname/IP.
-        VITE_API_URL: http://localhost:8000
     container_name: securefair-frontend
     ports:
-      - "3000:80"
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
     depends_on:
       - backend
     networks:

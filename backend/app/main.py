@@ -8,7 +8,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
-from app.api.endpoints import auth, organizations, projects, enrollments
+from app.api.endpoints import auth
 from app.db.database import engine, Base
 
 
@@ -77,15 +77,6 @@ app.add_middleware(
 
 # Include authentication router
 app.include_router(auth.router)
-
-# Include organization management router (ADMIN-only creates)
-app.include_router(organizations.router)
-
-# Include project management router (ADMIN-only creates)
-app.include_router(projects.router)
-
-# Include enrollment router (with duplicate protection)
-app.include_router(enrollments.router)
 
 
 # ==================== ROOT ENDPOINTS ====================
