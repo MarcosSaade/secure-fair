@@ -16,7 +16,7 @@ import {
   Typography,
   Alert,
 } from '@mui/material';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/auth';
 
@@ -95,6 +95,8 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               fullWidth
               required
+              placeholder="nombre@dominio.com"
+              helperText="Ejemplo: nombre@dominio.com"
               sx={{ mb: 2 }}
               autoComplete="email"
               autoFocus
@@ -118,6 +120,9 @@ export default function LoginPage() {
               sx={{ py: 1.5, fontWeight: 'bold' }}
             >
               {loading ? <CircularProgress size={22} color="inherit" /> : 'Iniciar Sesión'}
+            </Button>
+            <Button component={RouterLink} to="/register/student" fullWidth variant="text" sx={{ mt: 1 }}>
+              Registrarme como estudiante
             </Button>
           </Box>
         </Paper>

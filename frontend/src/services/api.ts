@@ -118,6 +118,26 @@ export const getErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     // Check for API response error message
     const apiError = error.response?.data as ApiResponse;
+    const rawData = error.response?.data as { detail?: unknown } | undefined;
+
+    if (Array.isArray(rawData?.detail) && rawData?.detail.length > 0) {
+      const firstDetail = rawData.detail[0] as { msg?: string; loc?: unknown[] };
+      const msg = firstDetail?.msg ?? 'Validation error';
+      const loc = Array.isArray(firstDetail?.loc) ? firstDetail.loc.join('.') : '';
+
+      if (loc.includes('email') && msg.toLowerCase().includes('valid email')) {
+        return 'Ingresa un correo válido con formato nombre@dominio.com';
+      }
+      if (msg.toLowerCase().includes('field required')) {
+        return 'Completa todos los campos obligatorios.';
+      }
+      return msg;
+    }
+
+    if (typeof rawData?.detail === 'string' && rawData.detail.trim()) {
+      return rawData.detail;
+    }
+
     if (apiError?.message) {
       return apiError.message;
     }

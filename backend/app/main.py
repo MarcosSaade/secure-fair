@@ -8,7 +8,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
-from app.api.endpoints import auth
+from app.api.endpoints import auth, organizations, projects, enrollments
 from app.db.database import engine, Base
 
 
@@ -75,11 +75,21 @@ app.add_middleware(
 
 # ==================== ROUTERS ====================
 
-# Include authentication router
+# Include API routers with /api prefix (primary)
+app.include_router(auth.router, prefix="/api")
+app.include_router(organizations.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
+app.include_router(enrollments.router, prefix="/api")
+
+# Backward-compatible routes without /api prefix
 app.include_router(auth.router)
+app.include_router(organizations.router)
+app.include_router(projects.router)
+app.include_router(enrollments.router)
 
 
 # ==================== ROOT ENDPOINTS ====================
+
 
 @app.get("/", tags=["Root"])
 async def root():
@@ -94,8 +104,8 @@ async def root():
             "authentication": "JWT (HS256)",
             "password_hashing": "Argon2id",
             "signatures": "Ed25519",
-            "code_hashing": "HMAC-SHA256"
-        }
+            "code_hashing": "HMAC-SHA256",
+        },
     }
 
 
@@ -104,10 +114,7 @@ async def health_check():
     """
     Health check endpoint for monitoring.
     """
-    return {
-        "status": "healthy",
-        "environment": settings.ENVIRONMENT
-    }
+    return {"status": "healthy", "environment": settings.ENVIRONMENT}
 
 
 @app.get("/api/info", tags=["Root"])
@@ -119,5 +126,5 @@ async def api_info():
         "jwt_expiration_minutes": settings.ACCESS_TOKEN_EXPIRE_MINUTES,
         "code_expiration_seconds": settings.ENROLLMENT_CODE_EXPIRE_SECONDS,
         "code_length": settings.ENROLLMENT_CODE_LENGTH,
-        "algorithm": settings.ALGORITHM
+        "algorithm": settings.ALGORITHM,
     }

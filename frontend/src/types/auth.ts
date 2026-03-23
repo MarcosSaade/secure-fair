@@ -12,11 +12,11 @@ export enum UserRole {
 }
 
 export interface User {
-  id: string;
+  id: number;
   email: string;
-    full_name?: string;
+  full_name?: string;
   role: UserRole;
-  is_active: boolean;
+  is_active?: boolean;
   created_at: string;
 }
 
@@ -26,13 +26,19 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  success: boolean;
-  data: {
-    access_token: string;
-    token_type: string;
-    user: User;
-  };
-  message?: string;
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface RegisterStudentPayload {
+  email: string;
+  password: string;
+  full_name: string;
+  role: UserRole.STUDENT;
+  student_id_number: string;
+  major?: string;
+  semester?: number;
 }
 
 export interface AuthContextType {

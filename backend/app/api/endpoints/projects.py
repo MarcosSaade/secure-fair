@@ -168,7 +168,7 @@ class SlotWithProjectResponse(BaseModel):
     project_name: str
     start_time: datetime
     end_time: datetime
-    capacity: int
+    max_capacity: int
     current_enrollments: int
     status: str
 
@@ -220,7 +220,7 @@ async def list_available_slots(
                 project_name=slot.project.name if slot.project else "???",
                 start_time=slot.start_time,
                 end_time=slot.end_time,
-                capacity=slot.capacity,
+                max_capacity=slot.capacity,
                 current_enrollments=slot.current_enrollments,
                 status=slot.status.value,
             )
@@ -276,6 +276,7 @@ async def get_slot_qr_token(
     )
 
 
+@router.get("/", response_model=List[ProjectResponse], summary="List Projects")
 @limiter.limit("100/minute")
 async def list_projects(
     request: Request,
