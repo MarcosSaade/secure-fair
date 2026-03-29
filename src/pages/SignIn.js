@@ -32,6 +32,14 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.floor(Math.random() * 16);
+      const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+      return v.toString(16);
+    });
+  };
+
   // Password validation constants
   const PASSWORD_MIN_LENGTH = 12;
 
@@ -117,7 +125,7 @@ const SignUp = () => {
 
     try {
       setTimeout(() => {
-        const id_usuario = crypto.randomUUID();
+        const id_usuario = generateUUID();
         const {username, password} = formData;
 
         const usuario = {

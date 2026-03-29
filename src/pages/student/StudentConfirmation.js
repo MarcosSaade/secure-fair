@@ -12,12 +12,21 @@ const StudentEnrollConfirm = () => {
   
 
   // Obtener proyecto y organización del estudiante
-  const enrolledProject = projects.find(p => p.id_proyecto === studentData?.id_proyecto);
-  const enrolledOrg = organizations.find(o => o.id_organizacion === enrolledProject?.id_organizacion);
+  const enrolledProjects = Array.isArray(studentData?.enrollments)
+    ? studentData.enrollments
+        .map(enrollment => {
+          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
+          const org = organizations.find(o => o.id_organizacion === enrollment.id_organizacion);
+          if (!project) return null;
+          return { ...project, org, periodo: enrollment.periodo };
+        })
+        .filter(Boolean)
+    : [];
 
   const handleGoHome = () => {
-    navigate("/signin"); 
+    navigate("/student/slots"); 
   };
+
 
   return (
     <Container maxWidth="sm">
@@ -37,11 +46,11 @@ const StudentEnrollConfirm = () => {
             ¡Felicidades!
           </Typography>
 
-        {enrolledProject && enrolledOrg ? (
+        {enrolledProjects.length > 0 ? (
           <Box sx={{ mb: 4, color: "text.secondary" }}>
             {/* Texto principal más grande */}
             <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-              {`Has quedado inscrito en el proyecto "${enrolledProject.nombre_proyecto}" de la organización "${enrolledOrg.nombre_osf}".`}
+              {`Has quedado inscrito en el proyecto "${enrolledProjects[0].nombre_proyecto}" de la organización "${enrolledProjects[0].org.nombre_osf}".`}
             </Typography>
 
             {/* Texto secundario más pequeño */}

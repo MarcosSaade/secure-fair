@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -43,7 +43,9 @@ const MainPage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [openExportDialog, setOpenExportDialog] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
+  const [importedData, setImportedData] = useState(null);
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const fileInputRef = useRef(null);
   useEffect(() => {
     const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
     const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
@@ -158,7 +160,38 @@ const MainPage = () => {
   const handleEditOrganization = () => navigate("/admin/editOrganization");
 
   const handleImport = () => {
-    console.log("Importing data...");
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      // Mapear a formato que backend espera
+      const mappedData = jsonData.map((row, index) => ({
+        id_proyecto: index + 1, // opcional si quieres asignar un id temporal
+        nombre_osf: row["Nombre oficial de la Organización Socio Formadora (OSF) con la que se realizará el Proyecto Solidario"] || "",
+        nombre_proyecto: row['" Nombre del Proyecto Solidario: \n (NOTA: no es el nombre de la OSF ni es el listado de actividades a realizar, ni la clave del CRN, el nombre debe ser atractivo para el estudiante) "'] || "",
+        descripcion_proyecto: row['"Objetivo del Proyecto Solidario: \n (El objetivo es el cambio deseado que se quiere lograr con el proyecto solidario respecto al problema identificado) "'] || "",
+        lugar: row['"Lugar de trabajo: \nNota: En caso de aplicar; dirección donde el estudiante realizará el Servicio Social"'] || "",
+        cupo_estudiantes: row['Cupo de estudiantes: Colocar el número de estudiantes que pueden participar en la experiencia (como recomendación no manejar menos de 10 participantes por grupo)'] || 0,
+        duracion: row['Duración de la experiencia: '] || "",
+        horas_acreditadas: row['Horas máximas que el estudiante puede acreditar dependiendo de su desempeño: '] || 0,
+        id_organizacion: row["id_organizacion"] || 0, // si viene del Excel
+      }));
+
+      setImportedData(mappedData);
+      setOpenImportDialog(true);
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   //  Abrir diálogo de exportación
@@ -533,6 +566,41 @@ const handleExportCSV = () => {
           </Box>
         </Container>
       </Box>
+
+      {/* IMPORT DIALOG */}
+      <input
+        type="file"
+        accept=".xlsx, .xls, .csv"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
+        <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Datos importados</DialogTitle>
+        <Box sx={{ p: 3 }}>
+          <Typography variant="body1" gutterBottom>
+            Se han importado {importedData ? importedData.length : 0} registros. Revisa que la información sea correcta antes de guardarla.
+          </Typography>
+          <TableAdmin students={importedData || []} projects={projects} organizations={organizaciones} selectedProject={selectedProject} />
+        </Box>
+        <DialogActions>
+          <Button variant="contained" color="error" onClick={() => setOpenImportDialog(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              // Aquí podrías agregar lógica para guardar los datos importados en el localStorage o enviarlos a un backend
+              setStudents((prev) => [...prev, ...importedData]);
+              setOpenImportDialog(false);
+            }}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* EXPORT DIALOG */}
       <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)} maxWidth="xs" fullWidth>
