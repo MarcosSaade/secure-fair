@@ -10,6 +10,7 @@ export const projects = [
     inscritos: 2,
     duracion: "3 weeks",
     horas_acreditadas: 100,
+    periodo: "Invierno",
     lugar: "Lugar del Proyecto A",
     id_organizacion: 2
   },
@@ -20,6 +21,7 @@ export const projects = [
     cupo_estudiantes: 40,
     inscritos: 25,
     duracion: "4 weeks",
+    periodo: "Verano",
     horas_acreditadas: 120,
     lugar: "Lugar del Proyecto B",
     id_organizacion: 2
@@ -31,6 +33,7 @@ export const projects = [
     cupo_estudiantes: 45,
     inscritos: 45,
     duracion: "5 weeks",
+    periodo: "Ago-Dic",
     horas_acreditadas: 150,
     lugar: "Lugar del Proyecto C",
     id_organizacion: 3
@@ -42,6 +45,7 @@ export const projects = [
     cupo_estudiantes: 100,
     inscritos: 20,
     duracion: "6 weeks",
+    periodo: "Verano",
     horas_acreditadas: 180,
     lugar: "Lugar del Proyecto D",
     id_organizacion: 1

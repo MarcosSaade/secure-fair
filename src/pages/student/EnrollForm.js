@@ -41,7 +41,7 @@ const StudentEnroll = () => {
   };
 
   // -------------------------
-  // Validate Code (UPDATED)
+  // Validate Code (REFACTORED FOR MULTI-PERIOD ENROLLMENT)
   // -------------------------
   const validateCode = () => {
     if (!formData.codigo.trim()) {
@@ -55,7 +55,7 @@ const StudentEnroll = () => {
     setValidating(true);
 
     setTimeout(() => {
-      //  READ FROM LOCALSTORAGE INSTEAD OF STATIC FILE
+      // READ FROM LOCALSTORAGE
       const savedCodes =
         JSON.parse(localStorage.getItem("enrollmentCodes")) || [];
 
@@ -86,7 +86,7 @@ const StudentEnroll = () => {
         return;
       }
 
-      // Check if already used
+      // Check if code already used (THIS REMAINS - block code reuse)
       if (codeObj.is_used) {
         setValidationResult({
           success: false,
@@ -95,21 +95,10 @@ const StudentEnroll = () => {
         setValidating(false);
         return;
       }
-      //  MARK CODE AS USED
+
+      // Get student data
       const user = JSON.parse(sessionStorage.getItem('user'));
       const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
-    //  const username = sessionStorage.getItem("username");
-    //  const studentData = JSON.parse(sessionStorage.getItem("studentData"));
-
-      if (studentData?.id_proyecto) {
-          setValidationResult({
-            success: false,
-            message: "Ya estás inscrito en un proyecto. No puedes inscribirte en más de uno.",
-          });
-          setValidating(false);
-          return;
-        }
-
 
       if (!studentData || !user) {
         setValidationResult({
@@ -120,14 +109,31 @@ const StudentEnroll = () => {
         return;
       }
 
-      const alreadyUsed = savedCodes.some(
-        (code) => code.used_by === studentData.matricula
+      // Get project to retrieve periodo
+      const project = projectsData.find(
+        (p) => p.id_proyecto === codeObj.id_proyecto
       );
 
-      if (alreadyUsed) {
+      if (!project) {
         setValidationResult({
           success: false,
-          message: "Ya has utilizado un código anteriormente.",
+          message: "El proyecto asociado al código no existe.",
+        });
+        setValidating(false);
+        return;
+      }
+
+      // ============================================
+      // NEW LOGIC: Check enrollment by PERIOD only
+      // Periodo comes from PROJECT, not codeObj
+      // ============================================
+      const hasEnrollmentInPeriod = Array.isArray(studentData?.enrollments)
+        && studentData.enrollments.some(enr => enr.periodo === project.periodo);
+
+      if (hasEnrollmentInPeriod) {
+        setValidationResult({
+          success: false,
+          message: `Ya estás inscrito en un proyecto en el periodo ${project.periodo}. No puedes inscribirte en más de uno en el mismo periodo.`,
         });
         setValidating(false);
         return;
@@ -138,6 +144,7 @@ const StudentEnroll = () => {
       const proyectoIndex = proyectos.findIndex(
         (p) => p.id_proyecto === codeObj.id_proyecto
       );
+
       // Check available slots
       if (proyectoIndex >= 0) {
         const proyecto = proyectos[proyectoIndex];
@@ -152,20 +159,19 @@ const StudentEnroll = () => {
           return;
         }
 
-      // Slots available, increment inscritos
-      proyecto.inscritos = (proyecto.inscritos || 0) + 1;
-      localStorage.setItem("proyectos", JSON.stringify(proyectos));
-      window.dispatchEvent(new Event("projectsUpdated"));
+        // Slots available, increment inscritos
+        proyecto.inscritos = (proyecto.inscritos || 0) + 1;
+        localStorage.setItem("proyectos", JSON.stringify(proyectos));
+        window.dispatchEvent(new Event("projectsUpdated"));
       }
 
-      // Mark code as used
+      // Mark code as used (keeps the block on code reuse)
       codeObj.is_used = true;
       codeObj.used_at = new Date().toISOString();
       codeObj.used_by = studentData.matricula;
+      localStorage.setItem("enrollmentCodes", JSON.stringify(savedCodes));
 
-
-      localStorage.setItem("enrollmentCodes",JSON.stringify(savedCodes));
-
+      // Get current student from storage service
       const estudiantes = storageService.getEstudiantes();
       const currentStudent = estudiantes.find(est => est.id_usuario === user.id_usuario);
 
@@ -173,43 +179,34 @@ const StudentEnroll = () => {
       console.log('User info from sessionStorage:', user);
       console.log('estudiantes from storageService:', estudiantes);
 
+      // ============================================
+      // NEW LOGIC: Append enrollment to array
+      // Instead of replacing, add to enrollments list
+      // ============================================
+      const currentEnrollments = Array.isArray(currentStudent?.enrollments)
+        ? currentStudent.enrollments
+        : [];
+
+      const newEnrollment = {
+        id_proyecto: codeObj.id_proyecto,
+        periodo: project.periodo,
+        id_organizacion: codeObj.id_organizacion,
+      };
+
       const updatedStudent = {
         ...currentStudent,
         id_usuario: user.id_usuario,
-        id_proyecto: codeObj.id_proyecto,
-        id_organizacion: codeObj.id_organizacion,
+        enrollments: [...currentEnrollments, newEnrollment],
       };
-      console.log(updatedStudent)
+
+      console.log("Updated student with new enrollment:", updatedStudent);
       storageService.saveEstudiante(updatedStudent);
 
       sessionStorage.setItem("studentData", JSON.stringify(updatedStudent));
       console.log("Disparando evento studentUpdated");
-      console.log('Verificando localStorage,', storageService.getEstudiantes());
+      console.log('Verificando localStorage:', storageService.getEstudiantes());
 
-      window.dispatchEvent(new Event('studentUpdated')); 
-
-
-      //const studentAccounts = JSON.parse(localStorage.getItem("studentAccounts")) || {};
-
-     // if (studentAccounts[username]) {
-     //   studentAccounts[username].id_proyecto = codeObj.id_proyecto;
-    //    studentAccounts[username].id_organizacion = codeObj.socio_id;
-
-    //    localStorage.setItem(
-    //      "studentAccounts",
-    //      JSON.stringify(studentAccounts)
-     //   );
-//
-        //  ALSO UPDATE SESSION STORAGE
-    //    sessionStorage.setItem(
-    //      "studentData",
-    //      JSON.stringify(studentAccounts[username])
-     //   );
-    //  }
-
-      const project = projectsData.find(
-        (p) => p.id_proyecto === codeObj.id_proyecto
-      );
+      window.dispatchEvent(new Event('studentUpdated'));
 
       setProjectInfo(project);
 

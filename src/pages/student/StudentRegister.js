@@ -111,6 +111,11 @@
         newErrors.celular = 'El celular es requerido';
       }
 
+      // Celular 10 digits
+      else if (!/^\d{10}$/.test(formData.celular.replace(/\D/g, ''))) {
+        newErrors.celular = 'El celular debe contener exactamente 10 dígitos';
+      }
+
       // Hora validation
       if (!formData.hora.trim()) {
         newErrors.hora = 'Debe seleccionar una hora';

@@ -12,8 +12,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { users } from './users';
-import { organizations } from './organization';
 import logo from './Logo.png';
 import * as storageService from '../services/StorageService';
 
@@ -53,37 +51,64 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // 1. Buscar en dummies (socios/admin)
-      const userFound = users.find(
-        (user) =>
-          user.username === formData.username &&
-          user.contraseña === formData.contraseña
+      console.log('=== LOGIN ATTEMPT ===');
+      console.log('Username:', formData.username);
+      console.log('Password:', formData.contraseña);
+
+      // 1. Check localStorage for updated admin credentials
+      const admins = storageService.getAdmins();
+      console.log('Admins from storage:', admins);
+      
+      const adminFound = admins.find(
+        (admin) =>
+          admin.username === formData.username &&
+          admin.contraseña === formData.contraseña
       );
 
-      if (userFound) {
-        if (userFound.tipo === 'socio') {
-          const orgFound = organizations.find(
-            (org) => org.id_organizacion === userFound.id_organizacion
-          );
-          if (orgFound) {
-            sessionStorage.setItem('organization', JSON.stringify(orgFound));
-          }
-          sessionStorage.setItem('username', userFound.username);
-          sessionStorage.setItem('tipo', 'socio');
-          sessionStorage.setItem('user', JSON.stringify(userFound));
-          return navigate(`/socio/main_pageSocio/${userFound.id_organizacion}`);
-        }
-
-        if (userFound.tipo === 'admin') {
-          sessionStorage.setItem('username', userFound.username);
-          sessionStorage.setItem('tipo', 'admin');
-          sessionStorage.setItem('user', JSON.stringify(userFound));
-          return navigate('/admin');
-        }
+      if (adminFound) {
+        console.log('✅ Admin found:', adminFound);
+        sessionStorage.setItem('username', adminFound.username);
+        sessionStorage.setItem('tipo', 'admin');
+        sessionStorage.setItem('user', JSON.stringify(adminFound));
+        return navigate('/admin');
       }
 
-      // 2. Buscar en usuarios reales
+      // 2. Check localStorage for updated socio credentials
+      const sociosRaw = localStorage.getItem('socios');
+      console.log('Raw socios from localStorage:', sociosRaw);
+      
+      let socios = [];
+      if (sociosRaw) {
+        const parsed = JSON.parse(sociosRaw);
+        socios = Array.isArray(parsed) ? parsed : Object.values(parsed);
+      }
+      console.log('Socios array:', socios);
+
+      const socioFound = socios.find(
+        (socio) =>
+          socio.username === formData.username &&
+          socio.contraseña === formData.contraseña
+      );
+
+      if (socioFound) {
+        console.log('✅ Socio found:', socioFound);
+        const organizaciones = storageService.getOrganizaciones();
+        const orgFound = organizaciones.find(
+          (org) => org.id_organizacion === socioFound.id_organizacion
+        );
+        if (orgFound) {
+          sessionStorage.setItem('organization', JSON.stringify(orgFound));
+        }
+        sessionStorage.setItem('username', socioFound.username);
+        sessionStorage.setItem('tipo', 'socio');
+        sessionStorage.setItem('user', JSON.stringify(socioFound));
+        return navigate(`/socio/main_pageSocio/${socioFound.id_organizacion}`);
+      }
+
+      // 3. Check localStorage for student credentials
       const usuarios = storageService.getUsuarios();
+      console.log('Usuarios from storage:', usuarios);
+      
       const usuarioReal = usuarios.find(
         (user) =>
           user.username === formData.username &&
@@ -91,29 +116,8 @@ const Login = () => {
       );
 
       if (usuarioReal) {
-        if (usuarioReal.tipo === 'socio') {
-          const organizaciones = storageService.getOrganizaciones();
-          const orgFound = organizaciones.find(
-            (org) => org.id_organizacion === usuarioReal.id_organizacion
-          );
-          if (orgFound) {
-            sessionStorage.setItem('organization', JSON.stringify(orgFound));
-          }
-          sessionStorage.setItem('username', usuarioReal.username);
-          sessionStorage.setItem('tipo', 'socio');
-          sessionStorage.setItem('user', JSON.stringify(usuarioReal));
-          return navigate(`/socio/main_pageSocio/${usuarioReal.id_organizacion}`);
-        }
-
-        if (usuarioReal.tipo === 'admin') {
-          sessionStorage.setItem('username', usuarioReal.username);
-          sessionStorage.setItem('tipo', 'admin');
-          sessionStorage.setItem('user', JSON.stringify(usuarioReal));
-          return navigate('/admin');
-        }
-
+        console.log('Usuario found:', usuarioReal);
         if (usuarioReal.tipo === 'student') {
-          // 3. Buscar datos adicionales en estudiantes por id_usuario
           const estudiantes = storageService.getEstudiantes();
           const studentData = estudiantes.find(
             (est) => est.id_usuario === usuarioReal.id_usuario
@@ -121,17 +125,19 @@ const Login = () => {
 
           sessionStorage.setItem('username', usuarioReal.username);
           sessionStorage.setItem('tipo', 'student');
+          sessionStorage.setItem('user', JSON.stringify(usuarioReal));
           sessionStorage.setItem(
             'studentData',
-            JSON.stringify(studentData || {}) // siempre objeto válido
+            JSON.stringify(studentData || {})
           );
           return navigate('/student/qr');
         }
       }
 
-      // 4. Si no se encontró ningún usuario
+      console.log('❌ No user found');
       setGeneralError('Credenciales incorrectas. Intenta de nuevo.');
     } catch (error) {
+      console.error('Login error:', error);
       setGeneralError('Ocurrió un error. Intenta de nuevo.');
     } finally {
       setIsLoading(false);

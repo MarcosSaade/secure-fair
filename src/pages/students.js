@@ -11,7 +11,7 @@ export const students = {
     carrera: 'ITC',
     celular: '555-1234',
     hora_registro: '9:00 AM',
-    id_proyecto: 1,
+    id_proyecto: 4,
     id_organizacion: 1,
     registered_at: '2024-01-15',
     checked_in_at: null

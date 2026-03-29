@@ -103,3 +103,16 @@ export const saveAdmin = (id_admin, data) => {
   saveToCollection("admins", id_admin, data);
 };
 
+// ---- SOCIOS ----
+export const getSocios = () => {
+  const data = getCollection("socios");
+  // Handle both array and object formats
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return Object.values(data);
+};
+
+export const saveSocio = (id_socio, data) => {
+  saveToCollection("socios", id_socio, data);
+};

@@ -153,6 +153,34 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                     </Typography>
                   </Box>
 
+                  {/* Period */}
+                    <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: theme.palette.text.secondary,
+                        fontWeight: 600,
+                        display: 'block',
+                        mb: 0.75,
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      Periodo
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: theme.palette.primary.main,
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                      }}
+                    >
+                      {project.periodo || 'N/A'}
+                    </Typography>
+                  </Box>
+  
+
+
+
                   {/* Location */}
                   <Box>
                     <Typography
@@ -269,108 +297,73 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
 
   // Desktop Table View
   return (
-    <TableContainer component={Paper}>
-      <Table sx={{ minWidth: 1000 }}>
-        <TableHead 
-          sx={{ 
-            backgroundColor: `${theme.palette.primary.main}15`,
-          }}
-        >
-          <TableRow>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Nombre
+  <TableContainer component={Paper}>
+  <Table sx={{ minWidth: 1000 }}>
+    <TableHead sx={{ backgroundColor: `${theme.palette.primary.main}15` }}>
+      <TableRow>
+        <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+        <TableCell sx={{ fontWeight: 700 }}>Descripción</TableCell>
+        <TableCell sx={{ fontWeight: 700 }}>Duración</TableCell>
+        <TableCell sx={{ fontWeight: 700 }}>Horas Acreditadas</TableCell>
+        <TableCell sx={{ fontWeight: 700 }}>Periodo</TableCell>
+        <TableCell sx={{ fontWeight: 700 }}>Lugar</TableCell>
+        <TableCell sx={{ fontWeight: 700 }}>Organización</TableCell>
+        <TableCell sx={{ fontWeight: 700 }} align="center">Cupo</TableCell>
+        <TableCell sx={{ fontWeight: 700 }} align="center">Disponibilidad</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {projects.map((project) => {
+        const availableSlots = getAvailableSlots(project);
+        const isFull = availableSlots === 0;
+
+        return (
+          <TableRow
+            key={project.id_proyecto}
+            sx={{
+              opacity: isFull ? 0.6 : 1,
+              '&:hover': {
+                backgroundColor: isFull ? 'transparent' : `${theme.palette.primary.main}08`,
+              },
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <TableCell sx={{ fontWeight: 600 }}>{project.nombre_proyecto}</TableCell>
+            <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {project.descripcion}
             </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Descripción
+            <TableCell sx={{ whiteSpace: 'nowrap' }}>{project.duracion}</TableCell>
+            <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {project.horas_acreditadas ?? <span style={{ color: '#aaa' }}>N/A</span>}
             </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Duración
+            <TableCell sx={{ whiteSpace: 'nowrap' }}>
+              {project.periodo || <span style={{ color: '#aaa' }}>N/A</span>}
             </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Horas Acreditadas
+            <TableCell>{project.lugar || <span style={{ color: '#aaa' }}>N/A</span>}</TableCell>
+            <TableCell>{getOrgName(project.id_organizacion) || 'N/A'}</TableCell>
+            <TableCell align="center">
+              <Chip
+                label={`${availableSlots}`}
+                size="small"
+                sx={{
+                  backgroundColor: !isFull ? `${theme.palette.success.main}20` : `${theme.palette.error.main}20`,
+                  color: !isFull ? theme.palette.success.main : theme.palette.error.main,
+                  fontWeight: 600,
+                }}
+              />
             </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Lugar
-            </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Organización
-            </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }}>
-              Cupo
-            </TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: '1rem', py: 2 }} align="center">
-              Disponibilidad
+            <TableCell align="center">
+              <Typography sx={{ fontWeight: 600, color: !isFull ? theme.palette.success.main : theme.palette.error.main }}>
+                {isFull ? 'Lleno' : 'Abierto'}
+              </Typography>
             </TableCell>
           </TableRow>
-        </TableHead>
-        <TableBody>
-          {projects.map((project) => {
-            const availableSlots = getAvailableSlots(project);
-            const isFull = availableSlots === 0;
-
-            return (
-              <TableRow
-                key={project.id_proyecto}
-                sx={{
-                  opacity: isFull ? 0.6 : 1,
-                  '&:hover': {
-                    backgroundColor: isFull ? 'transparent' : `${theme.palette.primary.main}08`,
-                  },
-                  borderBottom: `1px solid ${theme.palette.divider}`,
-                  '& td': {
-                    py: 2.5,
-                    fontSize: '0.95rem',
-                  },
-                }}
-              >
-                <TableCell sx={{ fontWeight: 600 }}>
-                  {project.nombre_proyecto}
-                </TableCell>
-                <TableCell sx={{ maxWidth: 150 }}>
-                  {project.descripcion}
-                </TableCell>
-                <TableCell>{project.duracion}</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>
-                  {project.horas_acreditadas ?? <span style={{ color: '#aaa' }}>N/A</span>}
-                </TableCell>
-                <TableCell>
-                  {project.lugar || <span style={{ color: '#aaa' }}>N/A</span>}
-                </TableCell>
-                <TableCell>{getOrgName(project.id_organizacion) || 'N/A'}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={`${availableSlots}`}
-                    size="small"
-                    sx={{
-                      backgroundColor:
-                        !isFull
-                          ? `${theme.palette.success.main}20`
-                          : `${theme.palette.error.main}20`,
-                      color:
-                        !isFull
-                          ? theme.palette.success.main
-                          : theme.palette.error.main,
-                      fontWeight: 600,
-                    }}
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <Typography
-                    sx={{
-                      fontWeight: 600,
-                      color: !isFull ? theme.palette.success.main : theme.palette.error.main,
-                    }}
-                  >
-                    {isFull ? 'Lleno' : 'Abierto'}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        );
+      })}
+    </TableBody>
+  </Table>
+</TableContainer>
   );
-};
+}
 
 export default ProjectsTable;

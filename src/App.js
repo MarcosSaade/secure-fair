@@ -10,6 +10,7 @@ import DemoAccess from './pages/DemoAccess';
 import {students as dummyStudents} from './pages/students';
 import { projects as projectsData } from "./pages/projects";
 import { organizations as dummiesOrg } from "./pages/organization";
+import {users} from './pages/users';
 
 // ==================== LAYOUTS ====================
 import StudentLayout from './layouts/StudentLayout';
@@ -33,11 +34,13 @@ import AdminMain from './pages/admin/main_page';
 import AdminEdit from './pages/admin/edit';
 import EditOrganization from './pages/admin/editOrganization';
 import AdminCheckIn from './pages/admin/checkIn';
+import AdminProfile from './pages/admin/AdminProfie';
 
 // ==================== SOCIO-FORMADOR PAGES ====================
 import MainSocio from './pages/socio/main_pageSocio';
 import SocioGenerateCode from './pages/socio/generatecode';
 import SocioProfile from './pages/socio/profile';
+
 
 // ==================== PLACEHOLDER PAGES ====================
 import { Box } from '@mui/material';
@@ -45,7 +48,6 @@ import { Box } from '@mui/material';
 const StudentResult = () => <Box sx={{ p: 4 }}>Final Enrollment Result</Box>;
 const AdminImport = () => <Box sx={{ p: 4 }}>Import Data</Box>;
 const AdminExport = () => <Box sx={{ p: 4 }}>Export Data</Box>;
-const AdminProfile = () => <Box sx={{ p: 4 }}>Admin Profile</Box>;
 const NotFound = () => <Box sx={{ p: 4 }}>404 - Page Not Found</Box>;
 //const STORAGE_KEY = "studentAccounts";
 
@@ -70,6 +72,39 @@ function App() {
           inscritos: p.inscritos || 0
         }));
         localStorage.setItem("proyectos", JSON.stringify(proyectosIniciales));
+      }
+
+      //  Initialize admins - filter from dummy users
+      if (!localStorage.getItem("admins")) {
+        const adminsArray = users.filter(user => user.tipo === "admin");
+        console.log("Guardando admins dummy:", adminsArray);
+        localStorage.setItem("admins", JSON.stringify(adminsArray));
+      }
+
+      //  Initialize socios - filter from dummy users
+      if (!localStorage.getItem("socios")) {
+        const sociosArray = users.filter(user => user.tipo === "socio");
+        console.log("Guardando socios dummy:", sociosArray);
+        localStorage.setItem("socios", JSON.stringify(sociosArray));
+      }
+
+      //  Initialize usuarios collection (for login tracking)
+      if (!localStorage.getItem("usuarios")) {
+        const usuariosArray = users.map(user => ({
+          id_usuario: user.id_usuario,
+          username: user.username,
+          contraseña: user.contraseña,
+          tipo: user.tipo,
+          activo: user.activo,
+          ...(user.id_organizacion && { id_organizacion: user.id_organizacion })
+        }));
+        console.log("Guardando usuarios dummy:", usuariosArray);
+        // Save as object with id_usuario as key for StorageService compatibility
+        const usuariosObj = {};
+        usuariosArray.forEach(user => {
+          usuariosObj[user.id_usuario] = user;
+        });
+        localStorage.setItem("usuarios", JSON.stringify(usuariosObj));
       }
     }, []);
     // Routes
