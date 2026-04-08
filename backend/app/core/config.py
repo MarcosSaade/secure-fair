@@ -42,6 +42,14 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v
     
+    @field_validator("ENROLLMENT_CODE_EXPIRE_SECONDS")
+    @classmethod
+    def validate_enrollment_code_expiration(cls, value: int) -> int:
+        """Keep enrollment code expiration within the supported security window."""
+        if value < 60 or value > 120:
+            raise ValueError("ENROLLMENT_CODE_EXPIRE_SECONDS must be between 60 and 120 seconds")
+        return value
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

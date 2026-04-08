@@ -116,7 +116,7 @@ class EnrollmentCodeCreate(BaseModel):
     expiration_seconds: Optional[int] = Field(
         default=120,
         ge=60,
-        le=300,
+        le=120,
         description="Code expiration time in seconds"
     )
     

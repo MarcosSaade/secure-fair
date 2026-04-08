@@ -7,6 +7,7 @@ import hashlib
 import secrets
 import string
 from datetime import datetime, timedelta
+from datetime import timezone
 from typing import Optional
 
 import nacl.signing
@@ -48,6 +49,14 @@ class CryptoService:
         alphabet = string.ascii_uppercase + string.digits
         code = ''.join(secrets.choice(alphabet) for _ in range(code_length))
         return code
+
+    def normalize_enrollment_code(self, code: str) -> str:
+        """
+        Normalize enrollment codes before hashing or verifying.
+
+        Codes are treated as case-insensitive and whitespace-agnostic.
+        """
+        return ''.join(code.split()).upper()
     
     def hash_enrollment_code(self, code: str) -> str:
         """
@@ -62,6 +71,7 @@ class CryptoService:
         Returns:
             Hexadecimal hash of the code
         """
+        code = self.normalize_enrollment_code(code)
         return hmac.new(
             self.code_secret,
             code.encode(),
@@ -81,6 +91,28 @@ class CryptoService:
         """
         expected_hash = self.hash_enrollment_code(code)
         return hmac.compare_digest(expected_hash, code_hash)
+
+    def is_enrollment_code_expired(
+        self,
+        expires_at: datetime,
+        current_time: Optional[datetime] = None,
+    ) -> bool:
+        """
+        Check whether an enrollment code has expired.
+
+        The comparison is timezone-safe and accepts both naive and aware datetimes.
+        Naive timestamps are treated as UTC to match the rest of the API.
+        """
+        now = current_time or datetime.now(timezone.utc)
+        normalized_expires_at = self._to_utc_datetime(expires_at)
+        normalized_now = self._to_utc_datetime(now)
+        return normalized_now >= normalized_expires_at
+
+    def _to_utc_datetime(self, value: datetime) -> datetime:
+        """Convert a datetime to a UTC-aware datetime."""
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
     
     # ==================== DIGITAL SIGNATURES (Ed25519) ====================
     

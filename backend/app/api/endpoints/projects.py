@@ -6,6 +6,7 @@ ADMIN and SOCIO role management for projects.
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import Query
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -528,6 +529,12 @@ class EnrollmentCodeResponse(BaseModel):
 async def generate_enrollment_code(
     request: Request,
     project_id: int,
+    expiration_seconds: int = Query(
+        default=settings.ENROLLMENT_CODE_EXPIRE_SECONDS,
+        ge=60,
+        le=120,
+        description="Enrollment code lifetime in seconds",
+    ),
     db: Session = Depends(get_db),
     current_socio: Socio = Depends(get_current_socio),
 ):
@@ -541,6 +548,7 @@ async def generate_enrollment_code(
     - HMAC-SHA256 hashed before storage (plaintext never stored)
     - Valid for 120 seconds (configurable)
     - Single-use
+    - Valid for 60-120 seconds (configurable)
     """
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -557,7 +565,7 @@ async def generate_enrollment_code(
     plaintext_code = crypto_service.generate_enrollment_code()
     code_hash = crypto_service.hash_enrollment_code(plaintext_code)
     expires_at = datetime.now(timezone.utc) + timedelta(
-        seconds=settings.ENROLLMENT_CODE_EXPIRE_SECONDS
+        seconds=expiration_seconds
     )
 
     enrollment_code = EnrollmentCode(
@@ -574,5 +582,5 @@ async def generate_enrollment_code(
         code=plaintext_code,
         project_id=project_id,
         expires_at=expires_at,
-        expires_in_seconds=settings.ENROLLMENT_CODE_EXPIRE_SECONDS,
+        expires_in_seconds=expiration_seconds,
     )
