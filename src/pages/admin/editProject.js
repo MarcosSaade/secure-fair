@@ -18,8 +18,11 @@ import {
 } from "@mui/material";
 
 import * as storageService from '../../services/StorageService';
+import { useNavigate } from "react-router-dom";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const EditProject = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState("");
@@ -104,6 +107,20 @@ const EditProject = () => {
 
   return (
     <Box p={4}>
+        <Box mb={2}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate(-1)}
+            sx={{
+                  minWidth: "auto",
+                  textTransform: "none",
+                  fontWeight: 500
+                }}
+            >
+            Volver
+          </Button>
+      </Box>
+
       <Typography variant="h4" gutterBottom>
         Administrar Proyectos
       </Typography>
@@ -119,7 +136,7 @@ const EditProject = () => {
       </Box>
 
       {/* FILTROS */}
-      <Box display="flex" gap={2} mb={3}>
+      <Box display="flex" gap={2} mb={3} fullWidth>
         <TextField
           select
           label="Filtrar por Organización"
@@ -195,11 +212,13 @@ const EditProject = () => {
       </Paper>
 
       {/* MODAL */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xl" PaperProps={{ style: { maxHeight: "90vh", overflowY: "auto" } }}>
         <DialogTitle>
           {isCreating ? "Agregar Proyecto" : "Editar Proyecto"}
         </DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <DialogContent
+          dividers
+           sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2, p: 3, fullWidth, maxHeight: "80vh", overflowY: "auto" }}>
           <TextField
             label="Nombre del Proyecto"
             value={editingProject?.nombre_proyecto || ""}

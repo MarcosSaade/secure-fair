@@ -61,15 +61,21 @@ const CheckIn = () => {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: true,
+        audio: false,
       });
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setCameraActive(true);
-        scanQR();
+
+        videoRef.current.onloadedmetadata = async () => {
+          await videoRef.current.play();
+          setCameraActive(true);
+          scanQR(); //  empieza solo cuando el video YA tiene tamaño real
+        };
       }
     } catch (err) {
-      setErrorMessage('No se pudo acceder a la cámara. Intenta con entrada manual.');
+      console.error("Camera error:", err);
     }
   };
 
@@ -82,39 +88,65 @@ const CheckIn = () => {
     }
   };
 
+    useEffect(() => {
+    console.log("CheckIn desmontado");
+    return () => {
+      console.log("Cleanup ejecutado");
+      stopCamera();
+    };
+  }, []);
   // Scan QR Code
   const scanQR = () => {
+    console.log("scanQR ejecutándose");
     const canvas = canvasRef.current;
     const video = videoRef.current;
 
-    if (!canvas || !video) return;
+    if (!canvas || !video) {
+      requestAnimationFrame(scanQR);
+      return;
+    }
 
-    const ctx = canvas.getContext('2d');
+    if (
+      video.readyState !== 4 ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
+      requestAnimationFrame(scanQR);
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      const code = jsQR(
+        imageData.data,
+        canvas.width,
+        canvas.height
+      );
 
       if (code) {
-        // QR found, stop scanning and process
-        console.log("QR Code detected:", code.data);
         stopCamera();
         processQRData(code.data);
-      } else if (cameraActive) {
-        // Continue scanning
-        setTimeout(scanQR, 300);
+        return;
       }
     } catch (err) {
-      if (cameraActive) {
-        setTimeout(scanQR, 300);
-      }
+      console.log("Safe scan error:", err);
     }
-  };
 
+    requestAnimationFrame(scanQR); //  mejor que setTimeout
+  };
   // Check if current time matches registered hour
   const checkTimeValidity = (horaRegistro) => {
     if (!horaRegistro) return { valid: false, message: 'Hora de registro no disponible' };
@@ -319,6 +351,7 @@ const CheckIn = () => {
     if (checkInResult === 'error') return 'Check-In Denegado';
     return '';
   };
+  console.log("CHECKIN NUEVO MONTADO");
 
   return (
     <Box
@@ -376,7 +409,6 @@ const CheckIn = () => {
                 </Typography>
 
                 {/* Camera View */}
-                {cameraActive ? (
                   <Box
                     sx={{
                       position: 'relative',
@@ -390,10 +422,11 @@ const CheckIn = () => {
                       ref={videoRef}
                       autoPlay
                       playsInline
+                      muted
                       sx={{
                         width: '100%',
                         height: 'auto',
-                        display: 'block',
+                        display: cameraActive ? 'block' : 'none',
                       }}
                       style={{ width: '100%', height: 'auto' }}
                     />
@@ -413,7 +446,7 @@ const CheckIn = () => {
                       }}
                     />
                   </Box>
-                ) : (
+                 
                   <Button
                     fullWidth
                     variant="contained"
@@ -427,7 +460,7 @@ const CheckIn = () => {
                   >
                     Abrir Cámara
                   </Button>
-                )}
+                
 
                 {/* Stop Camera Button */}
                 {cameraActive && (

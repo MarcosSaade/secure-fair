@@ -1,7 +1,5 @@
 import React, {  useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+import {  useParams } from "react-router-dom";
 import { useEffect } from "react";
 import {
   Box,
@@ -19,7 +17,7 @@ import {
   Chip
 } from "@mui/material";
 
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
@@ -27,14 +25,13 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 //import { projects as projectsData } from "../projects.js";
 import { organizations as orgsData } from "../organization.js";
 import { enrollmentCodes as initialCodes } from "../enrollmentCodes.js";
-import ProjectEnrolledStudents from "../../components/ProjectEnrolledStudents.js";
 import * as storageService from '../../services/StorageService';
 
 const MainSocio = () => {
   // -------------------------
   // Hooks
   // -------------------------
-  const navigate = useNavigate();
+  
   const { orgId } = useParams();
   const [selectedProject, setSelectedProject] = useState("");
   const [openCodeDialog, setOpenCodeDialog] = useState(false);
@@ -174,7 +171,7 @@ const MainSocio = () => {
   // -------------------------
   const generateEnrollmentCode = () => {
     if (!selectedProject) {
-      alert("Selecciona un proyecto primero");
+      alert("Selecciona un proyecto primero para generar códigos de inscripción.");
       return;
     }
 
@@ -215,48 +212,8 @@ const MainSocio = () => {
   // -------------------------
   // Navigation
   // -------------------------
-  const handleProfile = () => navigate("/socio/profile");
-
-  // -------------------------
-  // Export Data
-  // -------------------------
-  const handleExport = (type = "csv") => {
-    const dataToExport = filteredStudents.map((student) => {
-      const project = projects.find(
-        (proj) => proj.id_proyecto === student.id_proyecto
-      );
-
-      return {
-        Matricula: student.matricula,
-        Nombre: `${student.nombre} ${student.apellidos || ""}`.trim(),
-        Correo: student.correo,
-        Telefono: student.celular,
-        Carrera: student.carrera || "N/A",
-        Proyecto: project ? project.nombre_proyecto : "N/A",
-        Fecha_Registro: student.hora_registro || "N/A",
-      };
-    });
-
-    if (type === "csv") {
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      const csv = XLSX.utils.sheet_to_csv(worksheet);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      saveAs(blob, "estudiantes.csv");
-    } else if (type === "xlsx") {
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Estudiantes");
-      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      saveAs(blob, "estudiantes.xlsx");
-    }
-  };
-
-  console.log("RENDER MainSocio");
-  console.log("selectedProject:", selectedProject);
-  console.log("filteredStudents:", filteredStudents);
+ 
+ 
 
   return (
     <Box sx={{ p: 4, backgroundColor: "#f5f7fa", minHeight: "100vh" }}>
@@ -266,7 +223,7 @@ const MainSocio = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 4,
+          mb: 5,
         }}
       >
         <Box>
@@ -275,24 +232,17 @@ const MainSocio = () => {
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Gestiona tus proyectos y visualiza los estudiantes registrados.
+            Selecciona el proyecto que el estudiante desea y haz click en "Generar Nuevo Código."
           </Typography>
         </Box>
 
-        <IconButton
-          onClick={handleProfile}
-          sx={{
-            backgroundColor: "#e0f2fe",
-            "&:hover": { backgroundColor: "#bae6fd" },
-          }}
-        >
-          <AccountCircleIcon sx={{ fontSize: 34, color: "#0369a1" }} />
-        </IconButton>
+   
       </Box>
 
       {/* FILTER SECTION - AT TOP */}
-      <Paper sx={{ p: 3, borderRadius: 3, mb: 4 }} elevation={3}>
+  
         <Typography variant="h6" gutterBottom>
-          Selecciona un Proyecto
+          Selecciona un proyecto para generar códigos de inscripción
         </Typography>
 
         <TextField
@@ -314,11 +264,11 @@ const MainSocio = () => {
             </MenuItem>
           ))}
         </TextField>
-      </Paper>
+      
 
       {/* GENERATE CODE SECTION */}
       {selectedProject && (
-        <Paper sx={{ p: 4, borderRadius: 3, mb: 4, backgroundColor: "#e0f7fa" }} elevation={3}>
+        <Paper sx={{ p: 6, borderRadius: 3, mb: 4, backgroundColor: "#e0f7fa" }} elevation={3}>
           <Typography variant="h6" gutterBottom>
             Códigos de Inscripción para {projects.find((p) => p.id_proyecto === Number(selectedProject))?.nombre_proyecto}
           </Typography>
@@ -416,41 +366,6 @@ const MainSocio = () => {
             </Paper>
           </Grid>
         </Grid>
-      </Box>
-
-      {/* EXPORT BUTTONS */}
-      <Box sx={{ mb: 4, display: "flex", gap: 2, flexWrap: "wrap" }}>
-        <Button
-          variant="outlined"
-          onClick={() => handleExport("csv")}
-          disabled={filteredStudents.length === 0}
-        >
-          Exportar como CSV
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => handleExport("xlsx")}
-          disabled={filteredStudents.length === 0}
-        >
-          Exportar como XLSX
-        </Button>
-      </Box>
-
-      {/* TABLA DE ESTUDIANTES */}
-      <Box>
-        <Typography variant="h6" gutterBottom>
-          Estudiantes Registrados
-        </Typography>
-
-        {console.log(
-            "MainSocio -> students filtrados:",
-            filteredStudents
-          )}
-        <ProjectEnrolledStudents
-          students={filteredStudents}
-          projects={projects}
-          selectedProject={selectedProject}
-        />
       </Box>
 
       {/* CODES DIALOG */}

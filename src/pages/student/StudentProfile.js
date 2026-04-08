@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -19,49 +19,95 @@ import * as storageService from '../../services/StorageService';
 const StudentProfile = () => {
   const theme = useTheme();
   const user = JSON.parse(sessionStorage.getItem('user'));
-  const id_usuario = user?.id_usuario; 
-  //const username = sessionStorage.getItem('username');
+  const id_usuario = user?.id_usuario;
 
-  const currentStudent = JSON.parse(sessionStorage.getItem('studentData'));
-  const estudiantes = storageService.getEstudiantes();
-  const studentData = currentStudent  || estudiantes.find(est => est.id_usuario === user.id_usuario);
-
-  // Get complete student data from localStorage
-  //const getStudentData = () => {
-    //const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-    //const student = studentAccounts[username];
-
-    //if (!student) return null;
-
-  //  if (student.apellidos && !student.nombre.includes(student.apellidos)) {
-   //   student.nombre = `${student.nombre} ${student.apellidos}`;
-   // }
-
-   // return student;
- // };
-
- // const studentData = getStudentData();
-
-
-    const [formData, setFormData] = useState({
-    username: user?.username ||  '',
-    password: user?.contraseña || '',
-    nombre: studentData?.nombre || '',
-    matricula: studentData?.matricula || '',
-    carrera: studentData?.carrera || '',
-    correo: studentData?.correo || '',
-    celular: studentData?.celular || '',
-    hora_registro: studentData?.hora_registro || '',
+  //  State for dynamic data updates
+  const [studentData, setStudentData] = useState(null);
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    nombre: '',
+    matricula: '',
+    carrera: '',
+    correo: '',
+    celular: '',
+    hora_registro: '',
     newPassword: '',
     confirmNewPassword: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  //  Wrap loadStudentData in useCallback to avoid dependency issues
+  const loadStudentData = useCallback(() => {
+    const estudiantes = storageService.getEstudiantes();
+    const estudiantesArray = Array.isArray(estudiantes) ? estudiantes : Object.values(estudiantes || {});
+    const currentStudentData = estudiantesArray.find(est => est.id_usuario === id_usuario);
+
+    if (currentStudentData) {
+      setStudentData(currentStudentData);
+      setFormData({
+        username: user?.username || '',
+        password: user?.contraseña || '',
+        nombre: currentStudentData?.nombre || '',
+        matricula: currentStudentData?.matricula || '',
+        carrera: currentStudentData?.carrera || '',
+        correo: currentStudentData?.correo || '',
+        celular: currentStudentData?.celular || '',
+        hora_registro: currentStudentData?.hora_registro || '',
+        newPassword: '',
+        confirmNewPassword: '',
+      });
+    }
+  }, [id_usuario, user?.username, user?.contraseña]);
+
+  //  Load data on mount
+  useEffect(() => {
+    loadStudentData();
+  }, [loadStudentData]);
+
+  //  Listen for admin updates from other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'estudiantes') {
+        console.log('Datos de estudiantes actualizados desde otro tab');
+        loadStudentData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [loadStudentData]);
+
+  //  Listen for custom events from admin updates (same tab)
+  useEffect(() => {
+    const handleStudentUpdate = () => {
+      console.log('Evento de actualización recibido');
+      loadStudentData();
+    };
+
+    window.addEventListener('studentDataUpdated', handleStudentUpdate);
+    return () => window.removeEventListener('studentDataUpdated', handleStudentUpdate);
+  }, [loadStudentData]);
+
+  // ============================================
+  // NEW: Get all enrolled projects from enrollments array
+  // ============================================
+  const enrolledProjects = Array.isArray(studentData?.enrollments)
+    ? studentData.enrollments
+        .map(enrollment => {
+          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
+          const org = organizations.find(o => o.id_organizacion === enrollment.id_organizacion);
+          return { ...project, org, periodo: enrollment.periodo };
+        })
+        .filter(p => p) // Remove any undefined projects
+    : [];
+
+  // Keep old logic for backward compatibility (if single id_proyecto exists)
   const enrolledProject = projects.find(p => p.id_proyecto === studentData?.id_proyecto);
   const enrolledOrg = organizations.find(o => o.id_organizacion === enrolledProject?.id_organizacion);
 
@@ -73,125 +119,133 @@ const StudentProfile = () => {
     }));
   };
 
-const handleSaveChanges = (e) => {
-  e.preventDefault();
-  setMessage({ type: '', text: '' });
+  const handleSaveChanges = (e) => {
+    e.preventDefault();
+    setMessage({ type: '', text: '' });
 
-  const matriculaRegex = /^A0\d{7}$/;
+    const matriculaRegex = /^A0\d{7}$/;
 
-  if (!matriculaRegex.test(formData.matricula)) {
+    if (!matriculaRegex.test(formData.matricula)) {
+      setMessage({
+        type: 'error',
+        text: 'La matrícula debe comenzar con A0 y tener 9 caracteres (Ej: A01234567)',
+      });
+      return;
+    }
+
+    if (!formData.nombre.trim()) {
+      setMessage({ type: 'error', text: 'El nombre es requerido' });
+      return;
+    }
+    if (!formData.matricula.trim()) {
+      setMessage({ type: 'error', text: 'La matrícula es requerida' });
+      return;
+    }
+    if (!formData.carrera.trim()) {
+      setMessage({ type: 'error', text: 'La carrera es requerida' });
+      return;
+    }
+
+    if (
+      !formData.correo.trim() ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo) ||
+      /@tec\.mx$/i.test(formData.correo)
+    ) {
+      setMessage({ type: 'error', text: 'Email inválido o no puede ser @tec.mx' });
+      return;
+    }
+
+    if (!formData.celular.trim()) {
+      setMessage({ type: 'error', text: 'El celular es requerido' });
+      return;
+    }
+
+    if (formData.newPassword.trim()) {
+      const pw = formData.newPassword;
+      if (pw.length < 12) {
+        setMessage({ type: 'error', text: 'La contraseña debe tener al menos 12 caracteres' });
+        return;
+      }
+      if (!/[A-Z]/.test(pw)) {
+        setMessage({ type: 'error', text: 'La contraseña debe contener mayúsculas' });
+        return;
+      }
+      if (!/[0-9]/.test(pw)) {
+        setMessage({ type: 'error', text: 'La contraseña debe contener números' });
+        return;
+      }
+      if (!/[ !"#$%&'()*+,-./:;<=>?@[\\\]^_`{|}~]/.test(pw)) {
+        setMessage({ type: 'error', text: 'La contraseña debe contener caracteres especiales' });
+        return;
+      }
+      if (pw !== formData.confirmNewPassword) {
+        setMessage({ type: 'error', text: 'Las contraseñas nuevas no coinciden' });
+        return;
+      }
+    }
+
+    const finalPassword = formData.newPassword.trim() ? formData.newPassword : formData.password;
+
+    // Get students from storage
+    const estudiantesRaw = storageService.getEstudiantes() || [];
+    const estudiantes = Array.isArray(estudiantesRaw) ? estudiantesRaw : Object.values(estudiantesRaw);
+
+    // Find student index
+    const studentIndex = estudiantes.findIndex(est => est.id_usuario === id_usuario);
+
+    if (studentIndex !== -1) {
+      // Update with all original fields
+      estudiantes[studentIndex] = {
+        ...estudiantes[studentIndex],
+        nombre: formData.nombre,
+        apellidos: formData.apellidos || '',
+        matricula: formData.matricula,
+        carrera: formData.carrera,
+        correo: formData.correo,
+        celular: formData.celular,
+        hora_registro: formData.hora_registro,
+        username: formData.username,
+      };
+
+      // Save to localStorage
+      localStorage.setItem('estudiantes', JSON.stringify(estudiantes));
+      console.log("Estudiante actualizado:", estudiantes[studentIndex]);
+
+      // Update sessionStorage
+      sessionStorage.setItem('studentData', JSON.stringify(estudiantes[studentIndex]));
+      sessionStorage.setItem('user', JSON.stringify({ ...user, contraseña: finalPassword }));
+
+      // Update local state
+      setStudentData(estudiantes[studentIndex]);
+      setFormData(prev => ({
+        ...prev,
+        password: finalPassword,
+        newPassword: '',
+        confirmNewPassword: '',
+      }));
+    }
+
+    // Update user credentials
+    storageService.saveUsuario(id_usuario, { ...user, contraseña: finalPassword });
+
     setMessage({
-      type: 'error',
-      text: 'La matrícula debe comenzar con A0 y tener 9 caracteres (Ej: A01234567)',
+      type: 'success',
+      text: formData.newPassword
+        ? 'Perfil actualizado. Contraseña cambiada exitosamente.'
+        : 'Perfil actualizado exitosamente.',
     });
-    return;
-  }
 
-  if (!formData.nombre.trim()) {
-    setMessage({ type: 'error', text: 'El nombre es requerido' });
-    return;
-  }
-  if (!formData.matricula.trim()) {
-    setMessage({ type: 'error', text: 'La matrícula es requerida' });
-    return;
-  }
-  if (!formData.carrera.trim()) {
-    setMessage({ type: 'error', text: 'La carrera es requerida' });
-    return;
-  }
+    // Dispatch event for other components
+    window.dispatchEvent(new Event('studentDataUpdated'));
+    setEditMode(false);
+  };
 
-  if (
-    !formData.correo.trim() ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo) ||
-    /@tec\.mx$/i.test(formData.correo)
-  ) {
-    setMessage({ type: 'error', text: 'Email inválido o no puede ser @tec.mx' });
-    return;
-  }
-
-  if (!formData.celular.trim()) {
-    setMessage({ type: 'error', text: 'El celular es requerido' });
-    return;
-  }
-
-  if (formData.newPassword.trim()) {
-    const pw = formData.newPassword;
-    if (pw.length < 12) {
-      setMessage({ type: 'error', text: 'La contraseña debe tener al menos 12 caracteres' });
-      return;
-    }
-    if (!/[A-Z]/.test(pw)) {
-      setMessage({ type: 'error', text: 'La contraseña debe contener mayúsculas' });
-      return;
-    }
-    if (!/[0-9]/.test(pw)) {
-      setMessage({ type: 'error', text: 'La contraseña debe contener números' });
-      return;
-    }
-    if (!/[ !"#$%&'()*+,-./:;<=>?@[\\\]^_`{|}~]/.test(pw)) {
-      setMessage({ type: 'error', text: 'La contraseña debe contener caracteres especiales' });
-      return;
-    }
-    if (pw !== formData.confirmNewPassword) {
-      setMessage({ type: 'error', text: 'Las contraseñas nuevas no coinciden' });
-      return;
-    }
-  }
-
-  const finalPassword = formData.newPassword.trim() ? formData.newPassword : formData.password;
-
-  // ✅ ARREGLADO: Obtener el estudiante completo de localStorage
-  const estudiantesRaw = storageService.getEstudiantes() || [];
-  const estudiantes = Array.isArray(estudiantesRaw) ? estudiantesRaw : Object.values(estudiantesRaw);
-  
-  // Buscar el estudiante por id_usuario
-  const studentIndex = estudiantes.findIndex(est => est.id_usuario === id_usuario);
-  
-  if (studentIndex !== -1) {
-    // ✅ Actualizar manteniendo todos los campos originales
-    estudiantes[studentIndex] = {
-      ...estudiantes[studentIndex],
-      nombre: formData.nombre,
-      apellidos: formData.apellidos || '',
-      matricula: formData.matricula,
-      carrera: formData.carrera,
-      correo: formData.correo,
-      celular: formData.celular,
-      hora_registro: formData.hora_registro,
-      username: formData.username,
-    };
-
-    // Guardar en localStorage
-    localStorage.setItem('estudiantes', JSON.stringify(estudiantes));
-    console.log("Estudiante actualizado:", estudiantes[studentIndex]);
-  }
-
-  // Actualizar usuario
-  storageService.saveUsuario(id_usuario, { ...user, password: finalPassword });
-
-  // Actualizar sessionStorage
-  sessionStorage.setItem('studentData', JSON.stringify(estudiantes[studentIndex]));
-  sessionStorage.setItem('user', JSON.stringify({ ...user, password: finalPassword }));
-
-  // Actualizar formData
-  setFormData(prev => ({
-    ...prev,
-    password: finalPassword,
-    newPassword: '',
-    confirmNewPassword: '',
-  }));
-
-  setMessage({
-    type: 'success',
-    text: formData.newPassword
-      ? 'Perfil actualizado. Contraseña cambiada exitosamente.'
-      : 'Perfil actualizado exitosamente.',
-  });
-
-  // Disparar evento para notificar cambios
-  window.dispatchEvent(new Event('studentUpdated'));
-  setEditMode(false);
-};
+  const handleCancel = () => {
+    setEditMode(false);
+    // Reload data to discard changes
+    loadStudentData();
+    setMessage({ type: '', text: '' });
+  };
 
   if (!studentData) {
     return (
@@ -266,7 +320,7 @@ const handleSaveChanges = (e) => {
                   InputProps={{
                     endAdornment: (
                       <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end" size="small">
-                        {showNewPassword ? <VisibilityOff /> : <Visibility/>}
+                        {showNewPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     ),
                   }}
@@ -280,15 +334,14 @@ const handleSaveChanges = (e) => {
                   value={formData.confirmNewPassword}
                   onChange={handleInputChange}
                   margin="normal"
-                  InputProps = {{
+                  InputProps={{
                     endAdornment: (
-                      <IconButton onClick = {() => setConfirmNewPassword(!confirmNewPassword)} edge="end" size="small">
-                        {confirmNewPassword ? <VisibilityOff /> : <Visibility/>}
+                      <IconButton onClick={() => setConfirmNewPassword(!confirmNewPassword)} edge="end" size="small">
+                        {confirmNewPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     ),
                   }}
                   sx={{ mb: 2.5 }}
-                  
                 />
               </>
             )}
@@ -314,22 +367,7 @@ const handleSaveChanges = (e) => {
                 <Button
                   variant="outlined"
                   fullWidth
-                  onClick={() => {
-                    setEditMode(false);
-                    setFormData({
-                      ...formData,
-                      password: studentData.password,
-                      nombre: studentData.nombre,
-                      matricula: studentData.matricula,
-                      carrera: studentData.carrera,
-                      correo: studentData.correo,
-                      celular: studentData.celular,
-                      hora_registro: studentData.hora_registro,
-                      newPassword: '',
-                      confirmNewPassword: '',
-                    });
-                    setMessage({ type: '', text: '' });
-                  }}
+                  onClick={handleCancel}
                   sx={{ borderColor: theme.palette.divider, color: theme.palette.text.primary }}
                 >
                   Cancelar
@@ -338,7 +376,62 @@ const handleSaveChanges = (e) => {
             )}
           </Box>
 
-          {enrolledProject && (
+          {/* ============================================ */}
+          {/* NEW: Display all enrolled projects */}
+          {/* ============================================ */}
+          {enrolledProjects.length > 0 ? (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.primary.main, mb: 2.5 }}>
+                Proyectos Inscritos ({enrolledProjects.length})
+              </Typography>
+
+              {enrolledProjects.map((project, index) => (
+                <Box key={`${project.id_proyecto}-${index}`} sx={{ mb: 3, pb: 3, borderBottom: index < enrolledProjects.length - 1 ? `1px solid ${theme.palette.divider}` : 'none' }}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Nombre del Proyecto</Typography>
+                      <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: theme.palette.primary.main }}>{project.nombre_proyecto}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Duración</Typography>
+                      <Typography sx={{ fontSize: '1rem' }}>{project.duracion}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Horas Acreditadas</Typography>
+                      <Typography sx={{ fontSize: '1rem', fontWeight: 600 }}>{project.horas_acreditadas}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Lugar</Typography>
+                      <Typography sx={{ fontSize: '1rem' }}>{project.lugar}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Periodo</Typography>
+                      <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: theme.palette.info.main }}>{project.periodo}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Organización</Typography>
+                      <Typography sx={{ fontSize: '1rem' }}>{project.org?.nombre_osf || 'N/A'}</Typography>
+                    </Box>
+                    <Box sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Descripción</Typography>
+                      <Typography sx={{ fontSize: '1rem' }}>{project.descripcion_proyecto}</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              ))}
+            </>
+          ) : (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Alert severity="info">
+                No estás inscrito en ningún proyecto aún.
+              </Alert>
+            </>
+          )}
+
+          {/* Backward compatibility: Show old single project if no enrollments array */}
+          {enrolledProjects.length === 0 && enrolledProject && (
             <>
               <Divider sx={{ my: 3 }} />
               <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.primary.main, mb: 2.5 }}>
@@ -362,6 +455,10 @@ const handleSaveChanges = (e) => {
                   <Typography sx={{ fontSize: '1rem' }}>{enrolledProject.lugar}</Typography>
                 </Box>
                 <Box>
+                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Periodo</Typography>
+                  <Typography sx={{ fontSize: '1rem' }}>{enrolledProject.periodo}</Typography>
+                </Box>
+                <Box>
                   <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block', mb: 0.75 }}>Organización</Typography>
                   <Typography sx={{ fontSize: '1rem' }}>{enrolledOrg?.nombre_osf || 'N/A'}</Typography>
                 </Box>
@@ -371,12 +468,6 @@ const handleSaveChanges = (e) => {
                 </Box>
               </Box>
             </>
-          )}
-
-          {!enrolledProject && (
-            <Alert severity="info" sx={{ mt: 3 }}>
-              No estás inscrito en ningún proyecto aún.
-            </Alert>
           )}
         </CardContent>
       </Card>
