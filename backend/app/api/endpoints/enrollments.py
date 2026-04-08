@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-from datetime import timezone
 
 from app.db.database import get_db
 from app.models.models import (
@@ -130,7 +129,6 @@ async def create_enrollment(
         )
     
     # Check if code is expired
-    if datetime.utcnow() > enrollment_code.expires_at:
     if crypto_service.is_enrollment_code_expired(enrollment_code.expires_at):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -177,8 +175,6 @@ async def create_enrollment(
     enrollment_code.is_used = True
     enrollment_code.used_by_student_id = current_student.id
     enrollment_code.used_at = datetime.utcnow()
-        enrollment_code.used_at = datetime.now(timezone.utc)
-        'timestamp': datetime.now(timezone.utc).isoformat()
     
     # Step 7: Increment slot enrollment counter
     time_slot.current_enrollments += 1
