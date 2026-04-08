@@ -59,6 +59,8 @@ const StudentEnroll = () => {
       const savedCodes =
         JSON.parse(localStorage.getItem("enrollmentCodes")) || [];
 
+      
+
       const codeObj = savedCodes.find(
         (code) => code.code === formData.codigo.toUpperCase()
       );
@@ -220,10 +222,14 @@ const StudentEnroll = () => {
   };
 
   const handleContinue = () => {
+    console.log("=== handleContinue EJECUTADO ===");
+    console.log("accepted:", accepted);
+    console.log("validationResult:", validationResult);
+    console.log("projectInfo ACTUAL:", projectInfo);   // ← Esto es clave
+    console.log("formData.codigo:", formData.codigo);
+
     if (!accepted) {
-      alert(
-        "Debes aceptar las políticas del servicio social antes de continuar."
-      );
+      alert("Debes aceptar las políticas del servicio social antes de continuar.");
       return;
     }
 
@@ -232,11 +238,28 @@ const StudentEnroll = () => {
       return;
     }
 
+    if (!projectInfo) {
+      console.error("ERROR GRAVE: projectInfo es null/undefined");
+      alert("No se encontró la información del proyecto. Valida el código nuevamente.");
+      return;
+    }
+
+    console.log("✅ Todo correcto → Navegando a confirmation con projectInfo:", projectInfo.nombre_proyecto);
+
     navigate("/student/confirmation", {
-      state: { projectInfo, enrollmentCode: formData.codigo },
+      state: { 
+        projectInfo: projectInfo,
+        enrollmentCode: formData.codigo 
+      },
     });
+
+    console.log("navigate() llamado correctamente");
   };
 
+  console.log("=== DEBUG CONTINUE BUTTON ===");
+  console.log("accepted:", accepted);
+  console.log("validationResult:", validationResult);
+  console.log("disabled debería ser:", !accepted || !validationResult?.success);
   return (
     <Container maxWidth="sm">
       <Box sx={{ mt: 8 }}>
@@ -384,12 +407,11 @@ const StudentEnroll = () => {
               size="large"
               onClick={handleContinue}
               disabled={!accepted || !validationResult?.success}
+              fullWidth
               sx={{
                 mt: 2,
                 backgroundColor: "#2479bd",
-                "&:hover": {
-                  backgroundColor: "#1b5f91",
-                },
+                "&:hover": { backgroundColor: "#1b5f91" },
               }}
             >
               Continuar
