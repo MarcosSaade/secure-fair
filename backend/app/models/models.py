@@ -198,6 +198,10 @@ class Student(Base):
     user = relationship("User", back_populates="student")
     enrollments = relationship("Enrollment", back_populates="student")
     check_ins = relationship("CheckIn", back_populates="student")
+    signature_key = relationship("StudentSignatureKey", back_populates="student", uselist=False)
+    signing_challenges = relationship("SigningChallenge", back_populates="student")
+    signed_contracts = relationship("SignedContract", back_populates="student")
+    registration_windows = relationship("RegistrationWindow", back_populates="student")
     
     def __repr__(self):
         return f"<Student {self.student_id_number}>"
@@ -306,3 +310,95 @@ class CheckIn(Base):
     
     def __repr__(self):
         return f"<CheckIn Enrollment: {self.enrollment_id}>"
+
+
+class StudentSignatureKey(Base):
+    """
+    Student public signing key (Ed25519).
+
+    Private keys must never be stored on the server.
+    """
+    __tablename__ = "student_signature_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), unique=True, nullable=False)
+    public_key = Column(String(64), nullable=False)
+    algorithm = Column(String(20), nullable=False, default="Ed25519")
+
+    # Controlled by ADMIN after identity/matricula check
+    is_active = Column(Boolean, default=False, nullable=False)
+    activated_at = Column(DateTime, nullable=True)
+    activated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    student = relationship("Student", back_populates="signature_key")
+    activated_by = relationship("User")
+
+
+class SigningChallenge(Base):
+    """
+    One-time challenge used for contract signature verification.
+    """
+    __tablename__ = "signing_challenges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    nonce = Column(String(128), nullable=False, unique=True, index=True)
+    contract_hash = Column(String(64), nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    is_used = Column(Boolean, default=False, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    student = relationship("Student", back_populates="signing_challenges")
+
+    __table_args__ = (
+        Index('ix_signing_challenges_student', 'student_id'),
+        Index('ix_signing_challenges_expires', 'expires_at'),
+    )
+
+
+class SignedContract(Base):
+    """
+    Persisted evidence of successful contract signature verification.
+    """
+    __tablename__ = "signed_contracts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    challenge_id = Column(Integer, ForeignKey("signing_challenges.id"), unique=True, nullable=False)
+    contract_hash = Column(String(64), nullable=False)
+    signature = Column(String(256), nullable=False)
+    verified_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    student = relationship("Student", back_populates="signed_contracts")
+    challenge = relationship("SigningChallenge")
+
+    __table_args__ = (
+        Index('ix_signed_contracts_student', 'student_id'),
+    )
+
+
+class RegistrationWindow(Base):
+    """
+    Time-limited registration window activated by ADMIN after identity checks.
+    """
+    __tablename__ = "registration_windows"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    activated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    opened_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    is_used = Column(Boolean, default=False, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+
+    student = relationship("Student", back_populates="registration_windows")
+    activated_by = relationship("User")
+
+    __table_args__ = (
+        Index('ix_registration_windows_student', 'student_id'),
+        Index('ix_registration_windows_expires', 'expires_at'),
+    )

@@ -8,7 +8,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
-from app.api.endpoints import auth, organizations, projects, enrollments
+from app.api.endpoints import auth, organizations, projects, enrollments, signatures
 from app.db.database import engine, Base
 
 
@@ -80,12 +80,14 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(organizations.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(enrollments.router, prefix="/api")
+app.include_router(signatures.router, prefix="/api")
 
 # Backward-compatible routes without /api prefix
 app.include_router(auth.router)
 app.include_router(organizations.router)
 app.include_router(projects.router)
 app.include_router(enrollments.router)
+app.include_router(signatures.router)
 
 
 # ==================== ROOT ENDPOINTS ====================
