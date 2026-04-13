@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Code Configuration
     ENROLLMENT_CODE_EXPIRE_SECONDS: int = 120
     ENROLLMENT_CODE_LENGTH: int = 6
+
+    # Student signature flow
+    SIGNATURE_CHALLENGE_EXPIRE_SECONDS: int = 120
+    REGISTRATION_WINDOW_EXPIRE_MINUTES: int = 10
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = []
@@ -48,6 +52,22 @@ class Settings(BaseSettings):
         """Keep enrollment code expiration within the supported security window."""
         if value < 60 or value > 120:
             raise ValueError("ENROLLMENT_CODE_EXPIRE_SECONDS must be between 60 and 120 seconds")
+        return value
+
+    @field_validator("SIGNATURE_CHALLENGE_EXPIRE_SECONDS")
+    @classmethod
+    def validate_signature_challenge_expiration(cls, value: int) -> int:
+        """Keep challenge validity in a short-lived secure range."""
+        if value < 60 or value > 300:
+            raise ValueError("SIGNATURE_CHALLENGE_EXPIRE_SECONDS must be between 60 and 300 seconds")
+        return value
+
+    @field_validator("REGISTRATION_WINDOW_EXPIRE_MINUTES")
+    @classmethod
+    def validate_registration_window_expiration(cls, value: int) -> int:
+        """Registration window must be short-lived and bounded."""
+        if value < 1 or value > 60:
+            raise ValueError("REGISTRATION_WINDOW_EXPIRE_MINUTES must be between 1 and 60 minutes")
         return value
     
     class Config:
