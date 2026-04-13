@@ -38,5 +38,12 @@ export const users = [
     contraseña: "pass2",
     tipo: "admin",
     activo: true
+  },
+  {
+    id_usuario: 6,
+    username: "becario1",
+    contraseña: "pass5",
+    tipo: "becario",
+    activo: true
   }
 ];

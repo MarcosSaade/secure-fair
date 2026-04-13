@@ -73,6 +73,23 @@ const Login = () => {
         return navigate('/admin');
       }
 
+      // Check localSorage for updated becario credentials
+     const becarios = storageService.getUsuarios().filter(user => user.tipo === 'becario');
+      console.log('Becarios from storage:', becarios);
+      const becarioFound = becarios.find(
+     (becario) =>
+          becario.username === formData.username &&
+          becario.contraseña === formData.contraseña
+      );
+
+      if (becarioFound) {
+        sessionStorage.setItem('username', becarioFound.username);
+        sessionStorage.setItem('tipo', 'becario');
+        sessionStorage.setItem('user', JSON.stringify(becarioFound));
+        return navigate('/becario');
+      }
+
+
       // 2. Check localStorage for updated socio credentials
       const sociosRaw = localStorage.getItem('socios');
       console.log('Raw socios from localStorage:', sociosRaw);
@@ -143,6 +160,8 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  
 
 
   return (

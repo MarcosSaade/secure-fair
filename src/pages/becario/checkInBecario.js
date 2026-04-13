@@ -11,7 +11,7 @@ import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 
 import CheckIn from '../../components/CheckIn'
 
-const CheckInPage = () => {
+const CheckInBec= () => {
   const theme = useTheme();
   const navigate = useNavigate();
 
@@ -26,7 +26,7 @@ const CheckInPage = () => {
     <Container maxWidth="md">
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/admin')}
+        onClick={() => navigate('/becario')}
         sx={{ mb: 3, color: 'white' }}
       >
         Volver
@@ -39,4 +39,4 @@ const CheckInPage = () => {
   );
 };
 
-export default CheckInPage;
+export default CheckInBec;

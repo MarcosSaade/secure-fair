@@ -16,6 +16,8 @@ import {users} from './pages/users';
 import StudentLayout from './layouts/StudentLayout';
 import SocioLayout from './layouts/SocioLayout';
 import AdminLayout from './layouts/AdminLayout';
+import BecarioLayout from './layouts/BecarioLayout';
+
 
 // ==================== AUTHENTICATION PAGES ====================
 import SignIn from './pages/SignIn';
@@ -35,6 +37,11 @@ import AdminEdit from './pages/admin/edit';
 import EditOrganization from './pages/admin/editOrganization';
 import AdminCheckIn from './pages/admin/checkIn';
 import AdminProfile from './pages/admin/AdminProfie';
+
+// ==================== BECARIO-FORMADOR PAGES ====================
+import BecarioProfile from './pages/becario/BecarioProfile.js';
+import MainPageBec from './pages/becario/main_pageBec';
+import CheckInBecario from './pages/becario/checkInBecario';
 
 // ==================== SOCIO-FORMADOR PAGES ====================
 import MainSocio from './pages/socio/main_pageSocio';
@@ -153,6 +160,13 @@ function App() {
             <Route path="export" element={<AdminExport />} />
             <Route path="checkin" element={<AdminCheckIn />} />
             <Route path="profile" element={<AdminProfile />} />
+          </Route>
+
+          {/* ==================== BECARIO-FORMADOR ROUTES (Nested with BecarioLayout) ==================== */}
+          <Route path="/becario/*" element={<BecarioLayout />}>
+            <Route index element={<MainPageBec />} />
+            <Route path="profile" element={<BecarioProfile />} />
+            <Route path="checkin_bec" element={<CheckInBecario />} />
           </Route>
 
           {/* ==================== FALLBACK ROUTE ==================== */}
