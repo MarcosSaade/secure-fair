@@ -96,6 +96,19 @@ export const saveInscripcion = (id_inscripcion, data) => {
   saveToCollection("inscripciones", id_inscripcion, data);
 };
 
+export const createInscripcion = (data) => {
+  const id = crypto.randomUUID();
+
+  const nueva = {
+    id_inscripcion: id,
+    ...data,
+  };
+
+  saveToCollection("inscripciones", id, nueva);
+
+  return nueva;
+};
+
 // ---- ADMINS ----
 export const getAdmins = () => Object.values(getCollection("admins"));
 
