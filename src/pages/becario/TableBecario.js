@@ -13,11 +13,13 @@ import {
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import MenuIcon from '@mui/icons-material/Menu'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
-import AdminDashboardPanel from "../../components/dashboard"
+
 import TableChartIcon from '@mui/icons-material/TableChart';
 
 
-const MainPage = () => {
+import TableAdmin from "../../components/TableAdmin";
+
+const TableBec = () => {
   const navigate = useNavigate();
   const [organizaciones, setOrganizaciones] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -26,7 +28,9 @@ const MainPage = () => {
   // Estados
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
-
+  const [studentMatricula, setStudentMatricula] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [studentCarrera, setStudentCarrera] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -41,6 +45,66 @@ const MainPage = () => {
     setProjects(projs);
     setStudents(studs);
   }, []);
+
+  // Filtros de estudiantes
+  const filteredStudents = students.filter(s => {
+    let matchesOrg = true;
+    if (selectedOrg) {
+      // Check new format (enrollments array)
+      if (Array.isArray(s.enrollments)  && s.enrollments.length > 0) {
+        matchesOrg = s.enrollments.some(enrollment => enrollment.id_organizacion === Number(selectedOrg));
+      }
+      // Check old format (single id_organizacion)
+      else if (s.id_organizacion) {
+        matchesOrg = s.id_organizacion === Number(selectedOrg);
+      } else {
+        matchesOrg = false; // No organization info, so it doesn't match
+      }
+    }
+
+    if (!matchesOrg) return false;
+   
+    const fullName = `${s.nombre || ""} ${s.apellidos || ""}`.toLowerCase();
+    const matchesName = studentName ? (fullName.includes(studentName.toLowerCase())) : true;
+
+    let matchesProject = true;
+    if (selectedProject) {
+      const selectedProjectNum = Number(selectedProject);
+      // Check new format (enrollments array)
+      if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
+        matchesProject = s.enrollments.some(enrollment => enrollment.id_proyecto === selectedProjectNum);
+      }
+      // Check old format (single id_proyecto)
+      else if (s.id_proyecto) {
+        matchesProject = s.id_proyecto === selectedProjectNum;
+      }
+    }
+
+   
+    const matchesMatricula = studentMatricula ? (s.matricula?.toLowerCase().includes(studentMatricula.toLowerCase())) : true;
+    const matchesCarrera = studentCarrera ? (s.carrera?.toLowerCase().includes(studentCarrera.toLowerCase())) : true;
+    let matchesPeriod = true;
+    if (selectedPeriod) {
+      // Handle new format (enrollments array)
+      if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
+        matchesPeriod = s.enrollments.some((enrollment) => {
+          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
+          return (enrollment.periodo || project?.periodo) === selectedPeriod;
+        });
+      } 
+      // Handle old format (single id_proyecto)
+      else if (s.id_proyecto) {
+        const project = projects.find(p => p.id_proyecto === s.id_proyecto);
+        matchesPeriod = project?.periodo === selectedPeriod;
+      } 
+      // No project enrolled
+      else {
+        matchesPeriod = false;
+      }
+    }
+    
+    return matchesOrg && matchesProject && matchesMatricula && matchesName && matchesPeriod && matchesCarrera;
+  });
 
  
 
@@ -215,24 +279,31 @@ const MainPage = () => {
               ))}
             </TextField>
 
-        
+            <TextField label="Nombre del estudiante" fullWidth value={studentName} onChange={(e) => setStudentName(e.target.value)} />
+
+            <TextField
+              label="Matrícula del estudiante"
+              fullWidth
+              value={studentMatricula}
+              onChange={(e) => setStudentMatricula(e.target.value)}
+            />
+
+            <TextField
+              label="Carrera del estudiante"
+              fullWidth
+              value={studentCarrera}
+              onChange={(e) => setStudentCarrera(e.target.value)}
+            />
           </Box>
 
-          {/* STATS */}
-          <AdminDashboardPanel
-                  students={students}
-                  projects={projects}
-                  organizations={organizaciones}
-                  selectedOrg={selectedOrg}
-                  selectedProject={selectedProject}
-                  selectedPeriod={selectedPeriod}
-                />
-            <Box></Box>
-
+          {/* TABLE */}
+          <Box sx={{ mt: 5 }}>
+            <TableAdmin students={filteredStudents} projects={projects} organizations={organizaciones} selectedProject={selectedProject} />
+          </Box>
         </Container>
       </Box>
     </Box>
   )
 };
 
-export default MainPage;
+export default TableBec;

@@ -22,14 +22,13 @@ import PeopleAltIcon from '@mui/icons-material/PeopleAlt'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import DownloadIcon from '@mui/icons-material/Download'
-
 import MenuIcon from '@mui/icons-material/Menu'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
-import AdminDashboardPanel from "../../components/dashboard"
-import TableChartIcon from '@mui/icons-material/TableChart';
 
 
-const MainPage = () => {
+import TableAdmin from "../../components/TableAdmin";
+
+const TableAdminButton = () => {
   const navigate = useNavigate();
   const [organizaciones, setOrganizaciones] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -38,9 +37,9 @@ const MainPage = () => {
   // Estados
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
-  const [studentMatricula] = useState("");
-  const [studentName] = useState("");
-  const [studentCarrera] = useState("");
+  const [studentMatricula, setStudentMatricula] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [studentCarrera, setStudentCarrera] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [openExportDialog, setOpenExportDialog] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -393,10 +392,6 @@ const handleExportCSV = () => {
               Check-In
             </Button>
 
-          <Button fullWidth variant="contained" startIcon={<TableChartIcon />} onClick={handleTable}>
-              Tabla de Datos
-            </Button>
-
             <Button fullWidth variant="contained" startIcon={<PeopleAltIcon />} onClick={handleEdit}>
               Editar Estudiantes
             </Button>
@@ -419,7 +414,9 @@ const handleExportCSV = () => {
               Exportar Datos
             </Button>
           
- 
+           <Button fullWidth variant="contained" startIcon={<DownloadIcon />} onClick={handleTable}>
+              Tabla de Datos
+            </Button>
    
           </Box>
         </Box>
@@ -520,20 +517,29 @@ const handleExportCSV = () => {
               ))}
             </TextField>
 
+            <TextField label="Nombre del estudiante" fullWidth value={studentName} onChange={(e) => setStudentName(e.target.value)} />
+
+            <TextField
+              label="Matrícula del estudiante"
+              fullWidth
+              value={studentMatricula}
+              onChange={(e) => setStudentMatricula(e.target.value)}
+            />
+
+            <TextField
+              label="Carrera del estudiante"
+              fullWidth
+              value={studentCarrera}
+              onChange={(e) => setStudentCarrera(e.target.value)}
+            />
           </Box>
 
-          {/* STATS */}
-          <AdminDashboardPanel
-                  students={students}
-                  projects={projects}
-                  organizations={organizaciones}
-                  selectedOrg={selectedOrg}
-                  selectedProject={selectedProject}
-                  selectedPeriod={selectedPeriod}
-                />
-            <Box></Box>
+
  
-   
+          {/* TABLE */}
+          <Box sx={{ mt: 5 }}>
+            <TableAdmin students={filteredStudents} projects={projects} organizations={organizaciones} selectedProject={selectedProject} />
+          </Box>
         </Container>
       </Box>
 
@@ -552,7 +558,7 @@ const handleExportCSV = () => {
           <Typography variant="body1" gutterBottom>
             Se han importado {importedData ? importedData.length : 0} registros. Revisa que la información sea correcta antes de guardarla.
           </Typography>
-         
+          <TableAdmin students={importedData || []} projects={projects} organizations={organizaciones} selectedProject={selectedProject} />
         </Box>
         <DialogActions>
           <Button variant="contained" color="error" onClick={() => setOpenImportDialog(false)}>
@@ -588,4 +594,4 @@ const handleExportCSV = () => {
   )
 };
 
-export default MainPage;
+export default TableAdminButton;

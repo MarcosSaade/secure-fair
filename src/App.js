@@ -37,11 +37,13 @@ import AdminEdit from './pages/admin/edit';
 import EditOrganization from './pages/admin/editOrganization';
 import AdminCheckIn from './pages/admin/checkIn';
 import AdminProfile from './pages/admin/AdminProfie';
+import AdminTable from './pages/admin/TableAdminButton';
 
 // ==================== BECARIO-FORMADOR PAGES ====================
 import BecarioProfile from './pages/becario/BecarioProfile.js';
 import MainPageBec from './pages/becario/main_pageBec';
 import CheckInBecario from './pages/becario/checkInBecario';
+import BecTable from './pages/becario/TableBecario';
 
 // ==================== SOCIO-FORMADOR PAGES ====================
 import MainSocio from './pages/socio/main_pageSocio';
@@ -160,6 +162,7 @@ function App() {
             <Route path="export" element={<AdminExport />} />
             <Route path="checkin" element={<AdminCheckIn />} />
             <Route path="profile" element={<AdminProfile />} />
+            <Route path = 'table' element={<AdminTable/>}/>
           </Route>
 
           {/* ==================== BECARIO-FORMADOR ROUTES (Nested with BecarioLayout) ==================== */}
@@ -167,6 +170,7 @@ function App() {
             <Route index element={<MainPageBec />} />
             <Route path="profile" element={<BecarioProfile />} />
             <Route path="checkin_bec" element={<CheckInBecario />} />
+            <Route path = 'table' element = {<BecTable/>} />
           </Route>
 
           {/* ==================== FALLBACK ROUTE ==================== */}
