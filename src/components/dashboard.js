@@ -339,43 +339,72 @@ const AdminDashboardPanel = ({
   }, [projectEnrollmentCounts]);
 
   // ── Cupos disponibles ────────────────────────────────────────
+  
   const capacityData = useMemo(() => {
+
+    // 1️⃣ Determinar qué proyectos entran en el cálculo según filtros
+    let relevantProjects = projects;
+
     if (selectedProject) {
-      const project = projectEnrollmentCounts.find(
-        (p) => Number(p.id) === Number(selectedProject)
+      relevantProjects = projects.filter(
+        (p) => Number(p.id_proyecto) === Number(selectedProject)
       );
-      if (!project) return null;
-      return {
-        labels: ["Inscritos", "Disponibles"],
-        datasets: [
-          {
-            data: [
-              project.inscritos,
-              Math.max(project.cupo - project.inscritos, 0),
-            ],
-            backgroundColor: [PALETTE.navy, PALETTE.blueLight],
-            borderWidth: 0,
-            hoverOffset: 4,
-          },
-        ],
-      };
+    } else {
+      if (selectedOrg) {
+        relevantProjects = relevantProjects.filter(
+          (p) => Number(p.id_organizacion) === Number(selectedOrg)
+        );
+      }
+
+      if (selectedPeriod) {
+        relevantProjects = relevantProjects.filter(
+          (p) => p.periodo === selectedPeriod
+        );
+      }
     }
-    const totalCapacity = projectEnrollmentCounts.reduce(
-      (acc, p) => acc + p.cupo,
+
+    // 2️⃣ Calcular cupo total SOLO de esos proyectos
+    const totalCapacity = relevantProjects.reduce(
+      (acc, p) => acc + Number(p.cupo_estudiantes || 0),
       0
     );
+
+    // 3️⃣ Calcular inscritos SOLO en esos proyectos
+    const totalInscritos = relevantProjects.reduce((acc, proj) => {
+      const count = filteredStudents.filter((s) => {
+        if (Array.isArray(s.enrollments)) {
+          return s.enrollments.some(
+            (e) => Number(e.id_proyecto) === Number(proj.id_proyecto)
+          );
+        }
+        return Number(s.id_proyecto) === Number(proj.id_proyecto);
+      }).length;
+
+      return acc + count;
+    }, 0);
+
     return {
       labels: ["Inscritos", "Disponibles"],
       datasets: [
         {
-          data: [kpis.inscritos, Math.max(totalCapacity - kpis.inscritos, 0)],
+          data: [
+            totalInscritos,
+            Math.max(totalCapacity - totalInscritos, 0),
+          ],
           backgroundColor: [PALETTE.navy, PALETTE.blueLight],
           borderWidth: 0,
           hoverOffset: 4,
         },
       ],
     };
-  }, [projectEnrollmentCounts, selectedProject, kpis]);
+
+  }, [
+    projects,
+    filteredStudents,
+    selectedProject,
+    selectedOrg,
+    selectedPeriod,
+  ]);
 
   // ── Distribución por organización ────────────────────────────
   const organizationDistribution = useMemo(() => {

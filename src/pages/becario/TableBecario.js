@@ -106,7 +106,19 @@ const TableBec = () => {
     return matchesOrg && matchesProject && matchesMatricula && matchesName && matchesPeriod && matchesCarrera;
   });
 
- 
+    // Detectar si hay filtros activos
+    const hasActiveFilters =
+      selectedOrg ||
+      selectedProject ||
+      selectedPeriod ||
+      studentName ||
+      studentMatricula ||
+      studentCarrera;
+
+    // Lista final a mostrar en tabla
+    const studentsToDisplay = hasActiveFilters
+      ? filteredStudents
+      : filteredStudents.slice(-10).reverse();
 
   // Obtener periodo del proyecto
   const getUniquePeriods = () => {
@@ -298,7 +310,12 @@ const TableBec = () => {
 
           {/* TABLE */}
           <Box sx={{ mt: 5 }}>
-            <TableAdmin students={filteredStudents} projects={projects} organizations={organizaciones} selectedProject={selectedProject} />
+            <TableAdmin
+                students={studentsToDisplay}
+                projects={projects}
+                organizations={organizaciones}
+                selectedProject={selectedProject}
+              />
           </Box>
         </Container>
       </Box>

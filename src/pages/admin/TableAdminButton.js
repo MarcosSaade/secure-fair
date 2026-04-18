@@ -118,6 +118,19 @@ const TableAdminButton = () => {
     return matchesOrg && matchesProject && matchesMatricula && matchesName && matchesPeriod && matchesCarrera;
   });
 
+  const hasActiveFilters =
+  selectedOrg ||
+  selectedProject ||
+  selectedPeriod ||
+  studentName ||
+  studentMatricula ||
+  studentCarrera;
+
+// Lista final a mostrar en tabla
+const studentsToDisplay = hasActiveFilters
+  ? filteredStudents
+  : filteredStudents.slice(-10).reverse();
+
   // Obtener nombre de organización
   const getOrgName = (id) => {
     const org = organizaciones.find((o) => o.id_organizacion === id);
@@ -538,7 +551,12 @@ const handleExportCSV = () => {
  
           {/* TABLE */}
           <Box sx={{ mt: 5 }}>
-            <TableAdmin students={filteredStudents} projects={projects} organizations={organizaciones} selectedProject={selectedProject} />
+            <TableAdmin
+                students={studentsToDisplay}
+                projects={projects}
+                organizations={organizaciones}
+                selectedProject={selectedProject}
+              />
           </Box>
         </Container>
       </Box>

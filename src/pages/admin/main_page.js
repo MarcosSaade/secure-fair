@@ -119,6 +119,8 @@ const MainPage = () => {
     return matchesOrg && matchesProject && matchesMatricula && matchesName && matchesPeriod && matchesCarrera;
   });
 
+  
+
   // Obtener nombre de organización
   const getOrgName = (id) => {
     const org = organizaciones.find((o) => o.id_organizacion === id);
