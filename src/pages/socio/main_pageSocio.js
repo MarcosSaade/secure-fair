@@ -8,7 +8,7 @@ import {
   Button,
   TextField,
   MenuItem,
-  Grid,
+
   IconButton,
   Dialog,
   DialogTitle,
@@ -26,6 +26,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { organizations as orgsData } from "../organization.js";
 import { enrollmentCodes as initialCodes } from "../enrollmentCodes.js";
 import * as storageService from '../../services/StorageService';
+import SocioDashboardPanel from "../../components/dashboardSocio";
 
 const MainSocio = () => {
   // -------------------------
@@ -57,9 +58,6 @@ const MainSocio = () => {
   // Convertir students (objeto → array)
   // -------------------------
   const [studentsArray, setStudentsArray] = useState([]);
-  const [studentsFromOrgProjects] = useState([]);
-
-
 
   // Proyectos
   const [projects, setProjects] = useState([]);
@@ -140,14 +138,6 @@ const MainSocio = () => {
   // Filtrar por proyecto seleccionado
   // -------------------------
   
-  const filteredStudents = React.useMemo(() => {
-   return selectedProject === ""
-      ? studentsArray
-      : studentsArray.filter(
-          s => Number(s.id_proyecto) === Number(selectedProject)
-        );
-  }, [studentsArray, selectedProject]);
-
   // -------------------------
   // Get codes for selected project
   // -------------------------
@@ -339,34 +329,11 @@ const MainSocio = () => {
       )}
 
       {/* ESTADÍSTICAS */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Estadísticas
-        </Typography>
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-              <Typography variant="h5">{studentsFromOrgProjects.length}</Typography>
-              <Typography color="text.secondary">Total Estudiantes</Typography>
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-              <Typography variant="h5">{filteredStudents.length}</Typography>
-              <Typography color="text.secondary">Estudiantes Filtrados</Typography>
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-              <Typography variant="h5">{projects.length}</Typography>
-              <Typography color="text.secondary">Proyectos Activos</Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Box>
+      <SocioDashboardPanel
+          projects={projects}
+          students={studentsArray}
+          selectedProject={selectedProject}
+        />
 
       {/* CODES DIALOG */}
       <Dialog open={openCodeDialog} onClose={() => setOpenCodeDialog(false)} maxWidth="sm" fullWidth>

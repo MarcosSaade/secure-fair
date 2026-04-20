@@ -59,8 +59,6 @@ const StudentEnroll = () => {
       const savedCodes =
         JSON.parse(localStorage.getItem("enrollmentCodes")) || [];
 
-      
-
       const codeObj = savedCodes.find(
         (code) => code.code === formData.codigo.toUpperCase()
       );
