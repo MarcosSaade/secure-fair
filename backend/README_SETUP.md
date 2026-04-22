@@ -53,6 +53,17 @@ Luego actualiza con las claves generadas en el paso 1.
 pip install -r requirements.txt
 ```
 
+### 3.1 Migraciones de Base de Datos (Obligatorias)
+
+Este proyecto usa Alembic para controlar cambios de esquema. Antes de ejecutar el backend en un entorno nuevo, aplica las migraciones en lugar de depender de la creación automática de tablas.
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+Si agregas o modificas modelos, genera una nueva migración y revísala antes de aplicarla.
+
 ### 4. Iniciar Base de Datos
 
 Con Docker Compose (recomendado):
@@ -74,6 +85,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 La API estará disponible en: http://localhost:8000
+
+### 6.1 Firma Ed25519 del Alumno
+
+El diseño recomendado usa llaves Ed25519 generadas en el cliente del alumno. La llave privada debe permanecer en almacenamiento seguro no exportable; el servidor solo recibe la llave pública, el challenge firmado y la evidencia de verificación.
 
 ## 📚 Documentación API
 

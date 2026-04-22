@@ -16,6 +16,7 @@ from slowapi.util import get_remote_address
 from app.core.dependencies import get_current_admin, get_current_student
 from app.db.database import get_db
 from app.models.models import (
+    AuditLog,
     Enrollment,
     EnrollmentCode,
     RegistrationWindow,
@@ -165,6 +166,16 @@ async def create_enrollment(
     active_window.is_used = True
     active_window.used_at = now_utc
 
+    db.add(
+        AuditLog(
+            event_type="student_enrollment_created",
+            student_id=current_student.id,
+            enrollment_id=None,
+            registration_window_id=active_window.id,
+            details="Student enrolled with active registration window and verified code",
+        )
+    )
+
     time_slot.current_enrollments += 1
     if time_slot.current_enrollments >= time_slot.capacity:
         time_slot.status = SlotStatus.FULL
@@ -173,6 +184,21 @@ async def create_enrollment(
         db.add(new_enrollment)
         db.commit()
         db.refresh(new_enrollment)
+        
+        enrollment_audit = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.event_type == "student_enrollment_created",
+                AuditLog.student_id == current_student.id,
+                AuditLog.registration_window_id == active_window.id,
+            )
+            .order_by(AuditLog.created_at.desc())
+            .first()
+        )
+        if enrollment_audit is not None:
+            enrollment_audit.enrollment_id = new_enrollment.id
+            db.commit()
+            db.refresh(enrollment_audit)
     except IntegrityError as e:
         db.rollback()
         if "uq_student_slot" in str(e.orig):

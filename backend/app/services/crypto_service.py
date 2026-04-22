@@ -91,6 +91,11 @@ class CryptoService:
         except Exception:
             return False
 
+    def fingerprint_public_key(self, public_key_hex: str) -> str:
+        """Return a SHA-256 fingerprint for audit logging."""
+        normalized = public_key_hex.strip().lower()
+        return hashlib.sha256(normalized.encode()).hexdigest()
+
     def build_contract_challenge_message(
         self,
         student_id: int,

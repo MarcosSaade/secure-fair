@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.core.dependencies import get_current_admin, get_current_student
 from app.db.database import get_db
 from app.models.models import (
+    AuditLog,
     SignedContract,
     SigningChallenge,
     Student,
@@ -86,6 +87,14 @@ class ActivateWindowResponse(BaseModel):
     expires_at: datetime
 
 
+class RevokeKeyRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500)
+
+
+class CompromiseReportRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500)
+
+
 def _validate_contract_hash(value: str) -> str:
     if not re.fullmatch(r"[0-9a-fA-F]{64}", value):
         raise HTTPException(
@@ -93,6 +102,31 @@ def _validate_contract_hash(value: str) -> str:
             detail="contract_hash must be a SHA-256 hex string (64 chars)",
         )
     return value.lower()
+
+
+def _add_audit_log(
+    db: Session,
+    event_type: str,
+    actor_user_id: int | None = None,
+    student_id: int | None = None,
+    challenge_id: int | None = None,
+    registration_window_id: int | None = None,
+    enrollment_id: int | None = None,
+    public_key_fingerprint: str | None = None,
+    details: str | None = None,
+) -> None:
+    db.add(
+        AuditLog(
+            event_type=event_type,
+            actor_user_id=actor_user_id,
+            student_id=student_id,
+            challenge_id=challenge_id,
+            registration_window_id=registration_window_id,
+            enrollment_id=enrollment_id,
+            public_key_fingerprint=public_key_fingerprint,
+            details=details,
+        )
+    )
 
 
 @router.post("/keygen", response_model=KeyGenResponse, summary="Generate Student Ed25519 Key Pair")
@@ -129,7 +163,18 @@ async def keygen_student_ed25519(
         key_record.is_active = False
         key_record.activated_at = None
         key_record.activated_by_user_id = None
+        key_record.revoked_at = None
+        key_record.revoked_by_user_id = None
+        key_record.revoked_reason = None
 
+    fingerprint = crypto_service.fingerprint_public_key(public_key)
+    _add_audit_log(
+        db,
+        event_type="student_key_generated",
+        student_id=current_student.id,
+        public_key_fingerprint=fingerprint,
+        details="Server-assisted Ed25519 key generation completed",
+    )
     db.commit()
 
     return KeyGenResponse(
@@ -177,7 +222,18 @@ async def register_public_key(
         key_record.is_active = False
         key_record.activated_at = None
         key_record.activated_by_user_id = None
+        key_record.revoked_at = None
+        key_record.revoked_by_user_id = None
+        key_record.revoked_reason = None
 
+    fingerprint = crypto_service.fingerprint_public_key(public_key)
+    _add_audit_log(
+        db,
+        event_type="student_key_registered",
+        student_id=current_student.id,
+        public_key_fingerprint=fingerprint,
+        details="Student public key registered or rotated",
+    )
     db.commit()
     db.refresh(key_record)
 
@@ -218,6 +274,18 @@ async def activate_public_key(
     key_record.is_active = True
     key_record.activated_at = datetime.now(timezone.utc)
     key_record.activated_by_user_id = current_admin.id
+    key_record.revoked_at = None
+    key_record.revoked_by_user_id = None
+    key_record.revoked_reason = None
+
+    _add_audit_log(
+        db,
+        event_type="student_key_activated",
+        actor_user_id=current_admin.id,
+        student_id=student_id,
+        public_key_fingerprint=crypto_service.fingerprint_public_key(key_record.public_key),
+        details="ADMIN activated student public key after identity validation",
+    )
 
     db.commit()
     db.refresh(key_record)
@@ -268,6 +336,15 @@ async def create_signing_challenge(
     db.add(challenge)
     db.commit()
     db.refresh(challenge)
+
+    _add_audit_log(
+        db,
+        event_type="signing_challenge_created",
+        student_id=current_student.id,
+        challenge_id=challenge.id,
+        details="Challenge created for contract signature verification",
+    )
+    db.commit()
 
     message = crypto_service.build_contract_challenge_message(
         student_id=current_student.id,
@@ -349,6 +426,14 @@ async def verify_signature(
     challenge.is_used = True
     challenge.used_at = datetime.now(timezone.utc)
 
+    _add_audit_log(
+        db,
+        event_type="contract_signature_verified",
+        student_id=current_student.id,
+        challenge_id=challenge.id,
+        details="Student signature verified and cryptographic evidence stored",
+    )
+
     db.commit()
     db.refresh(signed_contract)
 
@@ -410,9 +495,113 @@ async def activate_registration_window(
     db.commit()
     db.refresh(window)
 
+    _add_audit_log(
+        db,
+        event_type="registration_window_activated",
+        actor_user_id=current_admin.id,
+        student_id=student_id,
+        registration_window_id=window.id,
+        details="ADMIN opened a limited registration window after verification",
+    )
+    db.commit()
+
     return ActivateWindowResponse(
         window_id=window.id,
         student_id=window.student_id,
         opened_at=window.opened_at,
         expires_at=window.expires_at,
+    )
+
+
+@router.post(
+    "/public-key/revoke/{student_id}",
+    response_model=PublicKeyResponse,
+    summary="Revoke Student Public Key (ADMIN)",
+)
+@limiter.limit("20/minute")
+async def revoke_public_key(
+    request: Request,
+    student_id: int,
+    payload: RevokeKeyRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    """Immediately revoke a student's active key when compromise is reported."""
+    key_record = (
+        db.query(StudentSignatureKey)
+        .filter(StudentSignatureKey.student_id == student_id)
+        .first()
+    )
+    if key_record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student public key not found")
+
+    key_record.is_active = False
+    key_record.revoked_at = datetime.now(timezone.utc)
+    key_record.revoked_by_user_id = current_admin.id
+    key_record.revoked_reason = payload.reason
+
+    _add_audit_log(
+        db,
+        event_type="student_key_revoked",
+        actor_user_id=current_admin.id,
+        student_id=student_id,
+        public_key_fingerprint=crypto_service.fingerprint_public_key(key_record.public_key),
+        details=payload.reason,
+    )
+
+    db.commit()
+    db.refresh(key_record)
+
+    return PublicKeyResponse(
+        student_id=key_record.student_id,
+        public_key=key_record.public_key,
+        algorithm=key_record.algorithm,
+        is_active=key_record.is_active,
+        activated_at=key_record.activated_at,
+    )
+
+
+@router.post(
+    "/public-key/report-compromise",
+    response_model=PublicKeyResponse,
+    summary="Report Compromised Key (STUDENT)",
+)
+@limiter.limit("5/minute")
+async def report_key_compromise(
+    request: Request,
+    payload: CompromiseReportRequest,
+    db: Session = Depends(get_db),
+    current_student: Student = Depends(get_current_student),
+):
+    """Immediately revoke the student's current key so it can be re-enrolled."""
+    key_record = (
+        db.query(StudentSignatureKey)
+        .filter(StudentSignatureKey.student_id == current_student.id)
+        .first()
+    )
+    if key_record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student public key not found")
+
+    key_record.is_active = False
+    key_record.revoked_at = datetime.now(timezone.utc)
+    key_record.revoked_reason = payload.reason
+    key_record.revoked_by_user_id = None
+
+    _add_audit_log(
+        db,
+        event_type="student_key_compromise_reported",
+        student_id=current_student.id,
+        public_key_fingerprint=crypto_service.fingerprint_public_key(key_record.public_key),
+        details=payload.reason,
+    )
+
+    db.commit()
+    db.refresh(key_record)
+
+    return PublicKeyResponse(
+        student_id=key_record.student_id,
+        public_key=key_record.public_key,
+        algorithm=key_record.algorithm,
+        is_active=key_record.is_active,
+        activated_at=key_record.activated_at,
     )

@@ -12,8 +12,9 @@ from app.api.endpoints import auth, organizations, projects, enrollments, signat
 from app.db.database import engine, Base
 
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables only in development; production must use Alembic migrations.
+if settings.ENVIRONMENT == "development":
+    Base.metadata.create_all(bind=engine)
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
