@@ -43,7 +43,7 @@ const TableAdmin = ({ students, projects, organizations, selectedProject }) => {
           </TableHead>
 
           <TableBody>
-            {students.map((student) => {
+            {students.filter((student) => student && student.nombre && student.matricula).map((student) => {
               const nombreCompleto = `${student.nombre} ${student.apellidos || ""}`.trim();
 
               // ============================================
