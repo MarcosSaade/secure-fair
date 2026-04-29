@@ -546,8 +546,8 @@ export const students = {
     carrera: 'LED',
     celular: '555-1035',
     hora_registro: '11:30 AM',
-    id_proyecto: 1,
-    id_organizacion: 2,
+    id_proyecto: null,
+    id_organizacion: null,
     registered_at: '2024-10-15',
     checked_in_at: null
   },
@@ -560,8 +560,8 @@ export const students = {
     carrera: 'IDM',
     celular: '555-1036',
     hora_registro: '11:45 AM',
-    id_proyecto: 4,
-    id_organizacion: 1,
+    id_proyecto: null,
+    id_organizacion: null,
     registered_at: '2024-10-16',
     checked_in_at: null
   },
@@ -574,8 +574,8 @@ export const students = {
     carrera: 'IBT',
     celular: '555-1037',
     hora_registro: '12:00 PM',
-    id_proyecto: 3,
-    id_organizacion: 3,
+    id_proyecto: null,
+    id_organizacion: null,
     registered_at: '2024-10-17',
     checked_in_at: null
   },
@@ -588,8 +588,8 @@ export const students = {
     carrera: 'LDE',
     celular: '555-1038',
     hora_registro: '12:15 PM',
-    id_proyecto: 1,
-    id_organizacion: 2,
+    id_proyecto: null,
+    id_organizacion: null,
     registered_at: '2024-10-18',
     checked_in_at: null
   },
@@ -602,8 +602,8 @@ export const students = {
     carrera: 'IRS',
     celular: '555-1039',
     hora_registro: '12:30 PM',
-    id_proyecto: 1,
-    id_organizacion: 2,
+    id_proyecto: null,
+    id_organizacion: null,
     registered_at: '2024-10-19',
     checked_in_at: null
   },
@@ -616,8 +616,8 @@ export const students = {
     carrera: 'LED',
     celular: '555-1040',
     hora_registro: '12:45 PM',
-    id_proyecto: 1,
-    id_organizacion: 2,
+    id_proyecto: null,
+    id_organizacion: null,
     registered_at: '2024-10-20',
     checked_in_at: null
   }

@@ -24,6 +24,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import DownloadIcon from '@mui/icons-material/Download'
 import MenuIcon from '@mui/icons-material/Menu'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
+import TableChartIcon from '@mui/icons-material/TableChart'
 
 
 import TableAdmin from "../../components/TableAdmin";
@@ -427,7 +428,7 @@ const handleExportCSV = () => {
               Exportar Datos
             </Button>
           
-           <Button fullWidth variant="contained" startIcon={<DownloadIcon />} onClick={handleTable}>
+           <Button fullWidth variant="contained" startIcon={<TableChartIcon />} onClick={handleTable}>
               Tabla de Datos
             </Button>
    
