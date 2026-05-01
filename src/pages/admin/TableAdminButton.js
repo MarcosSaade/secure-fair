@@ -61,6 +61,22 @@ const TableAdminButton = () => {
 
   // Filtros de estudiantes
   const filteredStudents = students.filter(s => {
+    // Exclude students with no project if a project is selected
+    if (selectedProject) {
+      // New format: enrollments array
+      if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
+        const hasProject = s.enrollments.some(enrollment => enrollment.id_proyecto === Number(selectedProject));
+        if (!hasProject) return false;
+      } else if (s.id_proyecto) {
+        if (s.id_proyecto !== Number(selectedProject)) return false;
+      } else {
+        // No project info at all
+        return false;
+      }
+    } else if ((selectedOrg || selectedPeriod) && (!Array.isArray(s.enrollments) || s.enrollments.length === 0) && !s.id_proyecto && !s.id_organizacion) {
+      // Original logic for org/period filters
+      return false;
+    }
     let matchesOrg = true;
     if (selectedOrg) {
       // Check new format (enrollments array)
@@ -460,7 +476,7 @@ const handleExportCSV = () => {
           </IconButton>
         )}
 
-        <Container sx= {{width: '%100'}}>
+        <Container maxWidth="xl">
           {/* HEADER */}
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Servicio Social - Administración

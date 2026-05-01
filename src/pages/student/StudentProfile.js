@@ -12,14 +12,19 @@ import {
   useTheme,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { projects } from '../projects';
-import { organizations } from '../organization';
+//import { projects } from '../projects';
+//import { organizations } from '../organization';
 import * as storageService from '../../services/StorageService';
 
 const StudentProfile = () => {
   const theme = useTheme();
   const user = JSON.parse(sessionStorage.getItem('user'));
   const id_usuario = user?.id_usuario;
+  const getProjects = () =>
+  JSON.parse(localStorage.getItem("proyectos")) || [];
+
+  const getOrganizations = () =>
+  JSON.parse(localStorage.getItem("organizaciones")) || [];
 
   //  State for dynamic data updates
   const [studentData, setStudentData] = useState(null);
@@ -54,6 +59,7 @@ const StudentProfile = () => {
         username: user?.username || '',
         password: user?.contraseña || '',
         nombre: currentStudentData?.nombre || '',
+        apellidos: currentStudentData?.apellidos || '',
         matricula: currentStudentData?.matricula || '',
         carrera: currentStudentData?.carrera || '',
         correo: currentStudentData?.correo || '',
@@ -97,19 +103,32 @@ const StudentProfile = () => {
   // ============================================
   // NEW: Get all enrolled projects from enrollments array
   // ============================================
+ 
   const enrolledProjects = Array.isArray(studentData?.enrollments)
     ? studentData.enrollments
         .map(enrollment => {
-          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-          const org = organizations.find(o => o.id_organizacion === enrollment.id_organizacion);
-          return { ...project, org, periodo: enrollment.periodo };
+          const project = getProjects().find(
+            p => p.id_proyecto === enrollment.id_proyecto
+          );
+
+          const org = getOrganizations().find(
+            o => o.id_organizacion === enrollment.id_organizacion
+          );
+
+          if (!project) return null;
+
+          return {
+            ...project,
+            org,
+            periodo: enrollment.periodo,
+          };
         })
-        .filter(p => p) // Remove any undefined projects
+        .filter(Boolean)
     : [];
 
   // Keep old logic for backward compatibility (if single id_proyecto exists)
-  const enrolledProject = projects.find(p => p.id_proyecto === studentData?.id_proyecto);
-  const enrolledOrg = organizations.find(o => o.id_organizacion === enrolledProject?.id_organizacion);
+  const enrolledProject = getProjects().find(p => p.id_proyecto === studentData?.id_proyecto);
+  const enrolledOrg = getOrganizations().find(o => o.id_organizacion === enrolledProject?.id_organizacion);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -352,7 +371,8 @@ const StudentProfile = () => {
               Información Personal
             </Typography>
 
-            <TextField fullWidth label="Nombre Completo" name="nombre" value={formData.nombre} onChange={handleInputChange} disabled={!editMode} margin="normal" sx={{ mb: 2 }} />
+            <TextField fullWidth label="Nombre" name="nombre" value={formData.nombre} onChange={handleInputChange} disabled={!editMode} margin="normal" sx={{ mb: 2 }} />
+            <TextField fullWidth label="Apellidos" name="apellidos" value={formData.apellidos} onChange={handleInputChange} disabled={!editMode} margin="normal" sx={{ mb: 2 }} />
             <TextField fullWidth label="Matrícula" name="matricula" value={formData.matricula} onChange={handleInputChange} disabled={!editMode} margin="normal" sx={{ mb: 2 }} />
             <TextField fullWidth label="Carrera" name="carrera" value={formData.carrera} onChange={handleInputChange} disabled={!editMode} margin="normal" sx={{ mb: 2 }} />
             <TextField fullWidth label="Correo Electrónico" name="correo" type="email" value={formData.correo} onChange={handleInputChange} disabled={!editMode} margin="normal" sx={{ mb: 2 }} />

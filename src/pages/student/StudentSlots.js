@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Typography, TextField, MenuItem, Button, useTheme } from "@mui/material";
 //import { projects } from "../projects";
-import { organizations } from "../organization";
+//import { organizations } from "../organization";
 import ProjectsTable from "../../components/ProjectsTable";
 
 const StudentSlots = () => {
@@ -11,6 +11,7 @@ const StudentSlots = () => {
   const [search, setSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState("");
   const [projects, setProjects] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
 
   useEffect(() => {
     const loadProjects = () => {
@@ -24,16 +25,25 @@ const StudentSlots = () => {
     return () => window.removeEventListener("projectsUpdated", loadProjects);
   }, []);
 
+    useEffect(() => {
+    const loadOrganizations = () => {
+      const storedOrganizations =
+        JSON.parse(localStorage.getItem("organizaciones")) || [];
+      setOrganizations(storedOrganizations);
+    };
+
+    loadOrganizations();
+
+    window.addEventListener("storageUpdated", loadOrganizations);
+    return () =>
+      window.removeEventListener("storageUpdated", loadOrganizations);
+  }, []);
+
   // Navigate to EnrollForm
   const handleRegister = () => {
     navigate("/student/enrollform");
   };
 
-  // Get org name by orgID
-  const getOrgName = (id_organizacion) => {
-    const org = organizations.find((o) => o.id_organizacion === id_organizacion);
-    return org ? org.nombre_osf : "";
-  };
 
   // Filter projects by name and organization
   const filteredProjects = projects.filter((project) => {
@@ -130,7 +140,7 @@ const StudentSlots = () => {
       {/* Projects Table/Cards */}
       <ProjectsTable 
         projects={filteredProjects} 
-        getOrgName={getOrgName}
+        organizations={organizations}
       />
     </Box>
   );

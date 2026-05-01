@@ -432,8 +432,7 @@ const handleExportCSV = () => {
         sx={{
           flexGrow: 1,
           backgroundColor: '#f5f7fa',
-          px: 3,
-          py:2,
+          p: 5,
           position: 'relative', // Needed for the show sidebar button
         }}
       >
@@ -451,7 +450,7 @@ const handleExportCSV = () => {
           </IconButton>
         )}
 
-        <Container sx= {{width: '%100'}}>
+        <Container maxWidth="xl">
           {/* HEADER */}
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Servicio Social - Administración
@@ -575,7 +574,7 @@ const handleExportCSV = () => {
       </Dialog>
 
       {/* EXPORT DIALOG */}
-      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)} maxWidth="xl" fullWidth>
         <DialogTitle>Selecciona el formato de exportación</DialogTitle>
         <DialogActions sx={{ gap: 1 }}>
           <Button variant="contained" onClick={handleExportCSV}>

@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import HomeIcon from '@mui/icons-material/Home';
 import {
   Person as PersonIcon,
   Logout as LogoutIcon,
@@ -21,11 +22,14 @@ import {
 } from "@mui/icons-material";
 import logo from "pages/Logo.png";
 
+
 const SocioLayout = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const user = JSON.parse(sessionStorage.getItem('user'));
+  const id_organizacion = user?.id_organizacion;
 
   const [anchorProfile, setAnchorProfile] = useState(null);
 
@@ -53,7 +57,14 @@ const SocioLayout = () => {
   const goBack = () => {
     navigate(-1);
   };
+  const home = () => {
+    if (!id_organizacion) {
+      navigate("/socio");
+      return;
+    }
 
+    navigate(`/socio/main_pageSocio/${id_organizacion}`);
+  };
   const showBackButton =
     location.pathname !== "/socio" &&
     location.pathname !== "/socio/main_pageSocio";
@@ -118,6 +129,11 @@ const SocioLayout = () => {
               <ArrowBackIcon />
             </IconButton>
           )}
+
+          {/* Home button */}
+          <IconButton onClick={home} sx={{ mr: 1 }}>
+            <HomeIcon />
+          </IconButton>
 
           {/* Avatar */}
           <IconButton

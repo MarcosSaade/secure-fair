@@ -102,7 +102,7 @@ const TableAdmin = ({ students, projects, organizations, selectedProject }) => {
                   <TableCell>{student.celular || "N/A"}</TableCell>
                   <TableCell>{student.carrera || "N/A"}</TableCell>
                   <TableCell>
-                    {organizationNames || "N/A"}
+                    {organizationNames || "NO INSCRITO"}
                   </TableCell>
                   <TableCell>
                     {projectsToDisplay.length > 0 ? (
@@ -110,7 +110,7 @@ const TableAdmin = ({ students, projects, organizations, selectedProject }) => {
                         {projectsToDisplay.map((project, idx) => (
                           <Chip
                             key={`${project.id_proyecto}-${idx}`}
-                            label={`${project.nombre_proyecto} (${project.periodo || "N/A"})`}
+                            label={`${project.nombre_proyecto} (${project.periodo || "NO INSCRITO"})`}
                             size="small"
                             variant="outlined"
                             color="primary"
@@ -118,7 +118,7 @@ const TableAdmin = ({ students, projects, organizations, selectedProject }) => {
                         ))}
                       </Box>
                     ) : (
-                      "N/A"
+                      "NO INSCRITO"
                     )}
                   </TableCell>
                  

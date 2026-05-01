@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { Bar, Doughnut, Pie } from "react-chartjs-2";
+import { Bar, Doughnut } from "react-chartjs-2";
 import * as storageService from "../services/StorageService";
 
 ChartJS.register(
@@ -39,20 +39,84 @@ const CHART_COLORS = [
   PALETTE.blueLight,
 ];
 
-const NEUTRAL = "#babab7";
+// ─── Helpers ───────────────────────────────────────────────────
 
-// ─── Opciones base Bar ─────────────────────────────────────────
+/**
+ * Convierte un nombre largo en siglas/abreviatura para ejes de gráficas.
+ * Ej: "1. Participar en una sesión de inducción..." → "Participar en una ses…"
+ * Muestra hasta `maxChars` caracteres (sin el número inicial si lo tiene).
+ */
+const abbreviateLabel = (name, maxChars = 5) => {
+  // Quitar prefijo tipo "1. " o "1) "
+  const clean = name.replace(/^\d+[)]\s*/, "").trim();
+  if (clean.length <= maxChars) return clean;
+  return clean.slice(0, maxChars) + "…";
+};
+
+// ─── Callback de tooltip que muestra el nombre completo ────────
+// Divide el texto en líneas de máx 40 chars para que el tooltip no lo corte
+const wrapText = (text, maxLen = 40) => {
+  const words = text.split(" ");
+  const lines = [];
+  let current = "";
+  words.forEach((word) => {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxLen) {
+      if (current) lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+  if (current) lines.push(current);
+  return lines;
+};
+
+const fullLabelTitleCallback = (items) => {
+  if (!items.length) return [];
+  const { dataIndex, dataset } = items[0];
+  // fullLabels se guarda dentro del dataset (no en chart.data)
+  const full = dataset?.fullLabels?.[dataIndex] ?? items[0].label ?? "";
+  return wrapText(full);
+};
+
+// Devuelve el color de la barra/segmento activo para el fondo del tooltip
+// Lee el color del elemento activo desde context.tooltip.dataPoints
+const getActiveColor = (context) => {
+  try {
+    const dp = context?.tooltip?.dataPoints?.[0];
+    if (!dp) return PALETTE.navy;
+    const { dataset, dataIndex } = dp;
+    const bg = dataset?.backgroundColor;
+    if (Array.isArray(bg)) return bg[dataIndex] ?? PALETTE.navy;
+    return bg ?? PALETTE.navy;
+  } catch {
+    return PALETTE.navy;
+  }
+};
+
+// Opciones de tooltip dinámicas (color igual al elemento hover)
+const dynamicTooltip = {
+  backgroundColor: (context) => getActiveColor(context),
+  titleColor: "#fff",
+  bodyColor: "rgba(255,255,255,0.85)",
+  padding: 10,
+  cornerRadius: 4,
+  displayColors: false,
+  callbacks: {
+    labelColor: (context) => {
+      const color = getActiveColor(context);
+      return { borderColor: color, backgroundColor: color };
+    },
+  },
+};
+
+// ─── Opciones base Bar vertical ────────────────────────────────
 const barBaseOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
-    tooltip: {
-      backgroundColor: PALETTE.navy,
-      titleColor: "#fff",
-      bodyColor: "#cde0f0",
-      padding: 10,
-      cornerRadius: 4,
-    },
+    tooltip: dynamicTooltip,
   },
   scales: {
     x: {
@@ -61,7 +125,7 @@ const barBaseOptions = {
       ticks: {
         color: "#888780",
         font: { size: 11 },
-        maxRotation: 30,
+        maxRotation: 0,
         autoSkip: false,
       },
     },
@@ -73,18 +137,54 @@ const barBaseOptions = {
   },
 };
 
-// ─── Opciones base Doughnut / Pie ──────────────────────────────
+// Opciones bar vertical con tooltip de nombre completo + color dinámico
+const barOptionsWithFullLabel = {
+  ...barBaseOptions,
+  plugins: {
+    ...barBaseOptions.plugins,
+    tooltip: {
+      ...dynamicTooltip,
+      callbacks: {
+        ...dynamicTooltip.callbacks,
+        title: fullLabelTitleCallback,
+      },
+    },
+  },
+};
+
+// ─── Opciones Bar horizontal (para organizaciones) ─────────────
+const barHorizontalOptions = {
+  indexAxis: "y",
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: dynamicTooltip,
+  },
+  scales: {
+    x: {
+      grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
+      border: { display: false },
+      ticks: { color: "#888780", font: { size: 11 } },
+      beginAtZero: true,
+    },
+    y: {
+      grid: { display: false },
+      border: { display: false },
+      ticks: {
+        color: "#888780",
+        font: { size: 11 },
+        // Las etiquetas ya vienen abreviadas desde el dataset
+      },
+    },
+  },
+};
+
+// ─── Opciones base Doughnut ────────────────────────────────────
 const arcBaseOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
-    tooltip: {
-      backgroundColor: PALETTE.navy,
-      titleColor: "#fff",
-      bodyColor: "#cde0f0",
-      padding: 10,
-      cornerRadius: 4,
-    },
+    tooltip: dynamicTooltip,
   },
 };
 
@@ -185,7 +285,6 @@ const ChartCard = ({ title, legend, children }) => (
 
     {legend && <ChartLegend items={legend} />}
 
-    {/* Altura fija para el canvas — todas las cards tienen la misma */}
     <Box sx={{ position: "relative", height: 240 }}>
       {children}
     </Box>
@@ -300,17 +399,18 @@ const AdminDashboardPanel = ({
     };
   }, [filteredStudents, projectEnrollmentCounts]);
 
-  // ── Top 5 más inscritos ──────────────────────────────────────
+  // ── Top 5 proyectos con más inscritos ────────────────────────
   const top5Most = useMemo(() => {
     const sorted = [...projectEnrollmentCounts]
       .sort((a, b) => b.inscritos - a.inscritos)
       .slice(0, 5);
     return {
-      labels: sorted.map((p) => p.nombre),
+      labels: sorted.map((p) => abbreviateLabel(p.nombre)),
       datasets: [
         {
           label: "Inscritos",
           data: sorted.map((p) => p.inscritos),
+          fullLabels: sorted.map((p) => p.nombre),
           backgroundColor: PALETTE.navy,
           borderRadius: 0,
           borderSkipped: false,
@@ -319,17 +419,18 @@ const AdminDashboardPanel = ({
     };
   }, [projectEnrollmentCounts]);
 
-  // ── Top 5 menos inscritos ────────────────────────────────────
+  // ── Top 5 proyectos con menos inscritos ──────────────────────
   const top5Least = useMemo(() => {
     const sorted = [...projectEnrollmentCounts]
       .sort((a, b) => a.inscritos - b.inscritos)
       .slice(0, 5);
     return {
-      labels: sorted.map((p) => p.nombre),
+      labels: sorted.map((p) => abbreviateLabel(p.nombre)),
       datasets: [
         {
           label: "Inscritos",
           data: sorted.map((p) => p.inscritos),
+          fullLabels: sorted.map((p) => p.nombre),
           backgroundColor: PALETTE.orange,
           borderRadius: 0,
           borderSkipped: false,
@@ -339,10 +440,7 @@ const AdminDashboardPanel = ({
   }, [projectEnrollmentCounts]);
 
   // ── Cupos disponibles ────────────────────────────────────────
-  
   const capacityData = useMemo(() => {
-
-    // 1️⃣ Determinar qué proyectos entran en el cálculo según filtros
     let relevantProjects = projects;
 
     if (selectedProject) {
@@ -355,7 +453,6 @@ const AdminDashboardPanel = ({
           (p) => Number(p.id_organizacion) === Number(selectedOrg)
         );
       }
-
       if (selectedPeriod) {
         relevantProjects = relevantProjects.filter(
           (p) => p.periodo === selectedPeriod
@@ -363,13 +460,11 @@ const AdminDashboardPanel = ({
       }
     }
 
-    // 2️⃣ Calcular cupo total SOLO de esos proyectos
     const totalCapacity = relevantProjects.reduce(
       (acc, p) => acc + Number(p.cupo_estudiantes || 0),
       0
     );
 
-    // 3️⃣ Calcular inscritos SOLO en esos proyectos
     const totalInscritos = relevantProjects.reduce((acc, proj) => {
       const count = filteredStudents.filter((s) => {
         if (Array.isArray(s.enrollments)) {
@@ -379,7 +474,6 @@ const AdminDashboardPanel = ({
         }
         return Number(s.id_proyecto) === Number(proj.id_proyecto);
       }).length;
-
       return acc + count;
     }, 0);
 
@@ -397,17 +491,10 @@ const AdminDashboardPanel = ({
         },
       ],
     };
+  }, [projects, filteredStudents, selectedProject, selectedOrg, selectedPeriod]);
 
-  }, [
-    projects,
-    filteredStudents,
-    selectedProject,
-    selectedOrg,
-    selectedPeriod,
-  ]);
-
-  // ── Distribución por organización ────────────────────────────
-  const organizationDistribution = useMemo(() => {
+  // ── Inscritos por organización (mapa id → count) ─────────────
+  const orgEnrollmentMap = useMemo(() => {
     const orgMap = {};
     filteredStudents.forEach((s) => {
       if (Array.isArray(s.enrollments)) {
@@ -418,25 +505,68 @@ const AdminDashboardPanel = ({
         orgMap[s.id_organizacion] = (orgMap[s.id_organizacion] || 0) + 1;
       }
     });
-    const labels = Object.keys(orgMap).map((id) => {
-      const org = organizations.find(
-        (o) => Number(o.id_organizacion) === Number(id)
-      );
-      return org ? org.nombre_osf : `Org ${id}`;
-    });
+    return orgMap;
+  }, [filteredStudents]);
+
+  // ── Top 5 organizaciones con MÁS inscritos (barras horiz.) ───
+  const top5OrgsMore = useMemo(() => {
+    const entries = Object.entries(orgEnrollmentMap)
+      .map(([id, count]) => {
+        const org = organizations.find(
+          (o) => Number(o.id_organizacion) === Number(id)
+        );
+        return { nombre: org ? org.nombre_osf : `Org ${id}`, count };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return {
-      labels,
+      labels: entries.map((e) => abbreviateLabel(e.nombre, 5)),
       datasets: [
         {
-          data: Object.values(orgMap),
-          backgroundColor: CHART_COLORS,
-          borderWidth: 0,
-          hoverOffset: 4,
+          label: "Inscritos",
+          data: entries.map((e) => e.count),
+          fullLabels: entries.map((e) => e.nombre),
+          backgroundColor: CHART_COLORS.slice(0, entries.length),
+          borderRadius: 0,
+          borderSkipped: false,
         },
       ],
-      total: filteredStudents.length,
     };
-  }, [filteredStudents, organizations]);
+  }, [orgEnrollmentMap, organizations]);
+
+  // ── Top 5 organizaciones con MENOS inscritos (barras horiz.) ─
+  const top5OrgsLess = useMemo(() => {
+    const entries = Object.entries(orgEnrollmentMap)
+      .map(([id, count]) => {
+        const org = organizations.find(
+          (o) => Number(o.id_organizacion) === Number(id)
+        );
+        return { nombre: org ? org.nombre_osf : `Org ${id}`, count };
+      })
+      .sort((a, b) => a.count - b.count)
+      .slice(0, 5);
+
+    return {
+      labels: entries.map((e) => abbreviateLabel(e.nombre, 5)),
+      datasets: [
+        {
+          label: "Inscritos",
+          data: entries.map((e) => e.count),
+          fullLabels: entries.map((e) => e.nombre),
+          backgroundColor: [
+            PALETTE.orange,
+            PALETTE.purple,
+            PALETTE.blueLight,
+            "#f4a843",
+            "#c94a6a",
+          ].slice(0, entries.length),
+          borderRadius: 0,
+          borderSkipped: false,
+        },
+      ],
+    };
+  }, [orgEnrollmentMap, organizations]);
 
   // ── Inscritos por periodo ────────────────────────────────────
   const enrollmentByPeriod = useMemo(() => {
@@ -472,38 +602,20 @@ const AdminDashboardPanel = ({
     };
   }, [filteredStudents, projects]);
 
-  // ── Conversión ───────────────────────────────────────────────
-  const conversionData = useMemo(() => {
-    const inscritos = kpis.inscritos;
-    const noInscritos = kpis.total - inscritos;
-    return {
-      labels: ["Inscritos", "Sin inscribir"],
-      datasets: [
-        {
-          data: [inscritos, noInscritos],
-          backgroundColor: [PALETTE.green, NEUTRAL],
-          borderWidth: 0,
-          hoverOffset: 4,
-        },
-      ],
-      total: kpis.total,
-    };
-  }, [kpis]);
-
-  // ── Leyendas dinámicas ───────────────────────────────────────
-  const orgLegendItems = useMemo(() => {
-    return (organizationDistribution.labels || []).map((label, i) => ({
-      color: CHART_COLORS[i % CHART_COLORS.length],
-      label: `${label} (${organizationDistribution.datasets[0].data[i]})`,
-    }));
-  }, [organizationDistribution]);
-
-  const periodLegendItems = useMemo(() => {
-    return (enrollmentByPeriod.labels || []).map((label, i) => ({
-      color: CHART_COLORS[i % CHART_COLORS.length],
-      label,
-    }));
-  }, [enrollmentByPeriod]);
+// Opciones bar horizontal con tooltip de nombre completo + color dinámico
+const barHorizWithFullLabel = {
+  ...barHorizontalOptions,
+  plugins: {
+    ...barHorizontalOptions.plugins,
+    tooltip: {
+      ...dynamicTooltip,
+      callbacks: {
+        ...dynamicTooltip.callbacks,
+        title: fullLabelTitleCallback,
+      },
+    },
+  },
+};
 
   // ── Render ───────────────────────────────────────────────────
   return (
@@ -518,7 +630,7 @@ const AdminDashboardPanel = ({
         Dashboard Feria de Servicio Social
       </Typography>
 
-      {/* ── KPIs — CSS Grid 4 columnas ─────────────────────── */}
+      {/* ── KPIs ────────────────────────────────────────────── */}
       <Box
         sx={{
           display: "grid",
@@ -545,12 +657,11 @@ const AdminDashboardPanel = ({
         />
         <KpiCard
           label="Proyecto con más demanda"
-          value={kpis.topProject}
-          sub="mayor número de inscritos"
+          value={kpis.topProject !== "N/A" ? kpis.topProject : ""}
         />
       </Box>
 
-      {/* ── Gráficas — CSS Grid 3 columnas ─────────────────── */}
+      {/* ── Gráficas — 3 columnas ────────────────────────────── */}
       <Box
         sx={{
           display: "grid",
@@ -558,20 +669,20 @@ const AdminDashboardPanel = ({
           gap: 3,
         }}
       >
-        {/* Top 5 más inscritos */}
+        {/* Top 5 organizaciones con más inscritos */}
         <ChartCard
-          title="Top 5 Proyectos con más inscritos"
+          title="Top 5 Organizaciones con más inscritos"
           legend={[{ color: PALETTE.navy, label: "Inscritos" }]}
         >
-          <Bar data={top5Most} options={barBaseOptions} />
+          <Bar data={top5OrgsMore} options={barHorizWithFullLabel} />
         </ChartCard>
 
-        {/* Top 5 menos inscritos */}
+        {/* Top 5 organizaciones con menos inscritos */}
         <ChartCard
-          title="Top 5 Proyectos con menos inscritos"
+          title="Top 5 Organizaciones con menos inscritos"
           legend={[{ color: PALETTE.orange, label: "Inscritos" }]}
         >
-          <Bar data={top5Least} options={barBaseOptions} />
+          <Bar data={top5OrgsLess} options={barHorizWithFullLabel} />
         </ChartCard>
 
         {/* Cupos disponibles */}
@@ -590,41 +701,31 @@ const AdminDashboardPanel = ({
           )}
         </ChartCard>
 
-        {/* Distribución por organización */}
+        {/* Top 5 proyectos con más inscritos */}
         <ChartCard
-          title="Distribución por organización"
-          legend={orgLegendItems}
+          title="Top 5 Proyectos con más inscritos"
+          legend={[{ color: PALETTE.navy, label: "Inscritos" }]}
         >
-          <Pie data={organizationDistribution} options={arcBaseOptions} />
+          <Bar data={top5Most} options={barOptionsWithFullLabel} />
+        </ChartCard>
+
+        {/* Top 5 proyectos con menos inscritos */}
+        <ChartCard
+          title="Top 5 Proyectos con menos inscritos"
+          legend={[{ color: PALETTE.orange, label: "Inscritos" }]}
+        >
+          <Bar data={top5Least} options={barOptionsWithFullLabel} />
         </ChartCard>
 
         {/* Inscritos por periodo */}
         <ChartCard
           title="Inscritos por periodo"
-          legend={periodLegendItems}
+          legend={(enrollmentByPeriod.labels || []).map((label, i) => ({
+            color: CHART_COLORS[i % CHART_COLORS.length],
+            label,
+          }))}
         >
           <Bar data={enrollmentByPeriod} options={barBaseOptions} />
-        </ChartCard>
-
-        {/* Alumnos sin inscripción */}
-        <ChartCard
-          title="Alumnos sin inscripción"
-          legend={[
-            { color: PALETTE.green, label: `Inscritos ${kpis.conversion}%` },
-            {
-              color: NEUTRAL,
-              label: `Sin inscribir ${
-                kpis.total
-                  ? (100 - parseFloat(kpis.conversion)).toFixed(1)
-                  : 0
-              }%`,
-            },
-          ]}
-        >
-          <Doughnut
-            data={conversionData}
-            options={{ ...arcBaseOptions, cutout: "70%" }}
-          />
         </ChartCard>
       </Box>
     </Box>

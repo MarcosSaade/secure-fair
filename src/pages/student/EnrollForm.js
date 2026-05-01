@@ -15,7 +15,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 
-import { projects as projectsData } from "../projects.js";
+//import { projects as projectsData } from "../projects.js";
 import * as storageService from '../../services/StorageService';
 
 const StudentEnroll = () => {
@@ -110,10 +110,12 @@ const StudentEnroll = () => {
       }
 
       // Get project to retrieve periodo
-      const project = projectsData.find(
+        const proyectos = JSON.parse(localStorage.getItem("proyectos")) || [];
+
+      const project = proyectos.find(
         (p) => p.id_proyecto === codeObj.id_proyecto
       );
-
+   
       if (!project) {
         setValidationResult({
           success: false,
@@ -140,7 +142,7 @@ const StudentEnroll = () => {
       }
 
       // UPDATE PROJECT SLOTS
-      const proyectos = JSON.parse(localStorage.getItem("proyectos")) || [];
+    
       const proyectoIndex = proyectos.findIndex(
         (p) => p.id_proyecto === codeObj.id_proyecto
       );

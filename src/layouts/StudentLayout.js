@@ -20,6 +20,8 @@ import {
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import logo from 'pages/Logo.png';
+import HomeIcon from '@mui/icons-material/Home';
+
 /**
  * StudentLayout
  * 
@@ -64,6 +66,9 @@ const StudentLayout = () => {
     navigate(-1);
   };
 
+  const home = () => {
+    navigate("/student/slots");
+  };
   // Determine if back button should show
   const showBackButton =
     location.pathname !== '/student' && location.pathname !== '/student/register';
@@ -142,6 +147,19 @@ const StudentLayout = () => {
               <ArrowBackIcon />
             </IconButton>
           )}
+
+            {/* Home Button */}
+           {!isMobile && showBackButton && (
+            <IconButton
+              onClick={home}
+              sx={{
+                mr: 1,
+              }}
+            >
+              <HomeIcon />
+            </IconButton>
+          )}
+            
 
           {/* Profile Avatar Button - Yellow Circle */}
           <IconButton

@@ -23,7 +23,7 @@ import {
  * - Card view on mobile (large, easy to read)
  * - Table view on desktop
  */
-const ProjectsTable = ({ projects = [], getOrgName }) => {
+const ProjectsTable = ({ projects = [], organizations = [] }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -31,14 +31,26 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
   const getAvailableSlots = (project) => {
     return Math.max(0, project.cupo_estudiantes - (project.inscritos || 0));
   };
+    const getOrgName = (orgId) => {
+    const org = organizations.find(
+      (o) => Number(o.id_organizacion) === Number(orgId)
+    );
+    return org?.nombre_osf || 'N/A';
+  };
 
   // Mobile Card View
   if (isMobile) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {projects.map((project) => {
-          const availableSlots = getAvailableSlots(project);
-          const isFull = availableSlots === 0;
+      {projects.map((project) => {
+        const availableSlots = getAvailableSlots(project);
+        const isFull = availableSlots === 0;
+
+        console.log({
+          projectOrgId: project.id_organizacion,
+          orgName: getOrgName(project.id_organizacion),
+          project
+        });
 
           return (
             <Card
@@ -90,7 +102,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                       lineHeight: 1.5,
                     }}
                   >
-                    {project.descripcion}
+                    {project.descripcion_proyecto || project.descripcion}
                   </Typography>
                 </Box>
 
@@ -225,7 +237,7 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
                         fontSize: '0.95rem',
                       }}
                     >
-                      {getOrgName(project.id_organizacion) || 'N/A'}
+                      {getOrgName(project.id_organizacion) ?? 'N/A'}
                     </Typography>
                   </Box>
 
@@ -330,7 +342,9 @@ const ProjectsTable = ({ projects = [], getOrgName }) => {
           >
             <TableCell sx={{ fontWeight: 600 }}>{project.nombre_proyecto}</TableCell>
             <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {project.descripcion}
+              <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', display: 'block', maxWidth: 320 }}>
+                {project.descripcion_proyecto || project.descripcion}
+              </span>
             </TableCell>
             <TableCell sx={{ whiteSpace: 'nowrap' }}>{project.duracion}</TableCell>
             <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>

@@ -30,6 +30,7 @@ export default function EditOrganization() {
   const navigate = useNavigate();
   const [orgList, setOrgList] = useState([]);
   const [projectList, setProjectList] = useState([]);
+  const periodos = ["Invierno", "Verano", "Ago-Dic", "Ene-Jul"];
 
   const [selectedOrg, setSelectedOrg] = useState("");
 
@@ -45,6 +46,11 @@ export default function EditOrganization() {
     nombre_proyecto: "",
     descripcion_proyecto: "",
     cupo_estudiantes: "",
+    periodo: "",
+    duracion: "",
+    horas_acreditadas: 0,
+    lugar: "",
+    inscritos: 0,
   });
 
   const [newOrgName, setNewOrgName] = useState("");
@@ -209,6 +215,13 @@ export default function EditOrganization() {
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={() => setOpenOrg(true)}
+            size="large"
+            sx={{
+              minWidth: 220,
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              padding: "10px 16px"
+            }}
           >
             Agregar Organización
           </Button>
@@ -225,6 +238,7 @@ export default function EditOrganization() {
               <TableCell><strong>Descripción</strong></TableCell>
               <TableCell><strong>Duración</strong></TableCell>
               <TableCell><strong>Lugar</strong></TableCell>
+              <TableCell><strong>Periodo</strong></TableCell>
               <TableCell><strong>Horas Acreditadas</strong></TableCell>
               <TableCell><strong>Capacidad</strong></TableCell>
               <TableCell><strong>Inscritos</strong></TableCell>
@@ -240,6 +254,11 @@ export default function EditOrganization() {
                   <TableCell>{project.descripcion_proyecto}</TableCell>
                   <TableCell>{project.duracion || "N/A"}</TableCell>
                   <TableCell>{project.lugar || "N/A"}</TableCell>
+                  <TableCell>
+                    {typeof project.periodo === "number"
+                      ? periodos[project.periodo]
+                      : project.periodo || "N/A"}
+                  </TableCell>
                   <TableCell>{project.horas_acreditadas || "N/A"}</TableCell>
                   <TableCell>{project.cupo_estudiantes || "N/A"}</TableCell>
                   <TableCell>{project.inscritos || 0}</TableCell>
@@ -351,6 +370,24 @@ export default function EditOrganization() {
           />
 
           <TextField
+            select
+            label="Periodo"
+            fullWidth
+            value={formData.periodo}
+            onChange={(e) =>
+              setFormData({ ...formData, periodo: e.target.value })
+            }
+          >
+            <MenuItem value="">Selecciona un periodo</MenuItem>
+
+            {periodos.map((p, index) => (
+              <MenuItem key={index} value={p}>
+                {p}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
             label="Horas Acreditadas"
             type="number"
             fullWidth
@@ -370,7 +407,18 @@ export default function EditOrganization() {
       </Dialog>
 
       {/* MODAL ORGANIZACIÓN */}
-      <Dialog open={openOrg} onClose={() => setOpenOrg(false)}>
+              <Dialog
+          open={openOrg}
+          onClose={() => setOpenOrg(false)}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{
+            sx: {
+              p: 2,
+              borderRadius: 3
+            }
+          }}
+        >
         <DialogTitle>Agregar Organización</DialogTitle>
 
         <DialogContent sx={{ mt: 2 }}>
