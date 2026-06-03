@@ -106,7 +106,7 @@ const AdminEdit = () => {
         const normalized = studsData.data.map(s => ({
           ...s,
           id_usuario: s.user_id ?? s.id_usuario,
-          nombre: s.full_name || s.nombre || '',
+          nombre: s.nombre || s.full_name || '',
           apellidos: s.apellidos || '',
           carrera: s.carrera || '',
           celular: s.phone || s.celular || '',

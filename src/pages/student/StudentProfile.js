@@ -361,85 +361,13 @@ const StudentProfile = () => {
 
           {isEnrolled ? (
             <>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.primary.main, mb: 2.5 }}>
-                Proyectos Inscritos ({enrolledProjects.length})
-              </Typography>
-
-              {enrolledProjects.map((project, index) => {
-                const periodoStyle = getPeriodStyle(project.periodo);
-                return (
-                  <Box
-                    key={`${project.id_proyecto}-${index}`}
-                    sx={{
-                      mb: 3,
-                      pb: 3,
-                      borderBottom: index < enrolledProjects.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
-                    }}
-                  >
-                    {/* Project header with period chip */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
-                      <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: theme.palette.primary.main, flex: 1 }}>
-                        {project.nombre_proyecto}
-                      </Typography>
-                      {project.periodo && (
-                        <Chip
-                          label={`${periodoStyle.icon} ${project.periodo}`}
-                          size="small"
-                          sx={{
-                            backgroundColor: periodoStyle.bg,
-                            color: periodoStyle.color,
-                            fontWeight: 700,
-                            fontSize: '0.8rem',
-                          }}
-                        />
-                      )}
-                    </Box>
-
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <Business sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
-                        <Box>
-                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Organización</Typography>
-                          <Typography sx={{ fontSize: '0.95rem' }}>{project.nombre_osf}</Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <Stars sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
-                        <Box>
-                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Horas Acreditadas</Typography>
-                          <Typography sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
-                            {project.horas_acreditadas !== 'N/A' ? `${project.horas_acreditadas} hrs` : 'N/A'}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <Timer sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
-                        <Box>
-                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Duración</Typography>
-                          <Typography sx={{ fontSize: '0.95rem' }}>{project.duracion}</Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <Place sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
-                        <Box>
-                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Lugar</Typography>
-                          <Typography sx={{ fontSize: '0.95rem' }}>{project.lugar}</Typography>
-                        </Box>
-                      </Box>
-                    </Box>
-                  </Box>
-                );
-              })}
-
               {/* ============================================ */}
-              {/* BADGE "INSCRITO" visual al final             */}
+              {/* BADGE "INSCRITO" visual al inicio            */}
               {/* ============================================ */}
               <Box
                 sx={{
-                  mt: 4,
+                  mb: 4,
+                  mt: 1,
                   borderRadius: 3,
                   overflow: 'hidden',
                   background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)',
@@ -532,6 +460,81 @@ const StudentProfile = () => {
                   </Box>
                 </Box>
               </Box>
+
+              <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.primary.main, mb: 2.5 }}>
+                Proyectos Inscritos ({enrolledProjects.length})
+              </Typography>
+
+              {enrolledProjects.map((project, index) => {
+                const periodoStyle = getPeriodStyle(project.periodo);
+                return (
+                  <Box
+                    key={`${project.id_proyecto}-${index}`}
+                    sx={{
+                      mb: 3,
+                      pb: 3,
+                      borderBottom: index < enrolledProjects.length - 1 ? `1px solid ${theme.palette.divider}` : 'none',
+                    }}
+                  >
+                    {/* Project header with period chip */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
+                      <Typography sx={{ fontSize: '1.05rem', fontWeight: 700, color: theme.palette.primary.main, flex: 1 }}>
+                        {project.nombre_proyecto}
+                      </Typography>
+                      {project.periodo && (
+                        <Chip
+                          label={`${periodoStyle.icon} ${project.periodo}`}
+                          size="small"
+                          sx={{
+                            backgroundColor: periodoStyle.bg,
+                            color: periodoStyle.color,
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                          }}
+                        />
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <Business sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Organización</Typography>
+                          <Typography sx={{ fontSize: '0.95rem' }}>{project.nombre_osf}</Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <Stars sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Horas Acreditadas</Typography>
+                          <Typography sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
+                            {project.horas_acreditadas !== 'N/A' ? `${project.horas_acreditadas} hrs` : 'N/A'}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <Timer sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Duración</Typography>
+                          <Typography sx={{ fontSize: '0.95rem' }}>{project.duracion}</Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <Place sx={{ fontSize: 18, color: theme.palette.text.secondary, mt: 0.3 }} />
+                        <Box>
+                          <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, display: 'block' }}>Lugar</Typography>
+                          <Typography sx={{ fontSize: '0.95rem' }}>{project.lugar}</Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              })}
+
+
             </>
           ) : (
             <Alert severity="info">
