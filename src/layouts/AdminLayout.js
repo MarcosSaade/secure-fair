@@ -15,6 +15,7 @@ import {
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import HomeIcon from '@mui/icons-material/Home';
 import {
   Person as PersonIcon,
   Logout as LogoutIcon,
@@ -55,6 +56,9 @@ const AdminLayout = () => {
     navigate(-1)
   }
 
+  const home = () => {
+    navigate('/admin')
+  }
   const showBackButton =
     location.pathname !== '/admin' &&
     location.pathname !== '/admin/dashboard'
@@ -117,6 +121,13 @@ const AdminLayout = () => {
           {!isMobile && showBackButton && (
             <IconButton onClick={goBack} sx={{ mr: 1 }}>
               <ArrowBackIcon />
+            </IconButton>
+          )}
+
+          {/* Home Button Desktop */}
+          {!isMobile && (
+            <IconButton onClick={home} sx={{ mr: 1 }}>
+              <HomeIcon />
             </IconButton>
           )}
 
@@ -193,6 +204,9 @@ const AdminLayout = () => {
           </Menu>
         </Toolbar>
       </AppBar>
+
+
+
 
       {/* Main Content */}
       <Box

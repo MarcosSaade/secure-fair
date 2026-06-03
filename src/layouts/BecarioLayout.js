@@ -21,6 +21,7 @@ import {
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material'
 import logo from 'pages/Logo.png' // Assuming Logo.png is in the same directory as AdminLayout.tsx
+import HomeIcon from '@mui/icons-material/Home';
 
 const BecarioLayout = () => {
   const theme = useTheme()
@@ -116,6 +117,13 @@ const BecarioLayout = () => {
           {!isMobile && showBackButton && (
             <IconButton onClick={goBack} sx={{ mr: 1 }}>
               <ArrowBackIcon />
+            </IconButton>
+          )}
+
+            {/* Home Button Desktop */}
+          {!isMobile && (
+            <IconButton onClick={() => navigate('/becario')} sx={{ mr: 1 }}>
+              <HomeIcon />
             </IconButton>
           )}
 

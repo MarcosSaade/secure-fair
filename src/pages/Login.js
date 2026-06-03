@@ -44,118 +44,59 @@ const Login = () => {
     setGeneralError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError('');
     if (!validateForm()) return;
     setIsLoading(true);
 
     try {
-      console.log('=== LOGIN ATTEMPT ===');
-      console.log('Username:', formData.username);
-      console.log('Password:', formData.contraseña);
+      const apiBase = `/api`;
+      const response = await fetch(`${apiBase}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.username,
+          password: formData.contraseña,
+        }),
+      });
 
-      // 1. Check localStorage for updated admin credentials
-      const admins = storageService.getAdmins();
-      console.log('Admins from storage:', admins);
-      
-      const adminFound = admins.find(
-        (admin) =>
-          admin.username === formData.username &&
-          admin.contraseña === formData.contraseña
-      );
-
-      if (adminFound) {
-        console.log('✅ Admin found:', adminFound);
-        sessionStorage.setItem('username', adminFound.username);
-        sessionStorage.setItem('tipo', 'admin');
-        sessionStorage.setItem('user', JSON.stringify(adminFound));
-        return navigate('/admin');
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Credenciales incorrectas');
       }
 
-      // Check localSorage for updated becario credentials
-     const becarios = storageService.getUsuarios().filter(user => user.tipo === 'becario');
-      console.log('Becarios from storage:', becarios);
-      const becarioFound = becarios.find(
-     (becario) =>
-          becario.username === formData.username &&
-          becario.contraseña === formData.contraseña
-      );
+      const userData = data.data;
+      const role = userData.role || userData.tipo;
 
-      if (becarioFound) {
-        sessionStorage.setItem('username', becarioFound.username);
-        sessionStorage.setItem('tipo', 'becario');
-        sessionStorage.setItem('user', JSON.stringify(becarioFound));
-        return navigate('/becario');
+      sessionStorage.setItem('username', userData.username);
+      sessionStorage.setItem('tipo', role);
+      sessionStorage.setItem('user', JSON.stringify(userData));
+      if (userData.token) sessionStorage.setItem('token', userData.token);
+
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'becario') {
+        navigate('/becario');
+      } else if (role === 'socio') {
+        const orgId = userData.org_id || userData.id_organizacion;
+        navigate(`/socio/main_pageSocio/${orgId}`);
+      } else if (role === 'student') {
+        // Fetch student profile from API to populate studentData
+        try {
+          const stuRes = await fetch(`${apiBase}/students/${userData.id}`);
+          const stuData = await stuRes.json();
+          if (stuData.success) {
+            sessionStorage.setItem('studentData', JSON.stringify(stuData.data));
+          }
+        } catch (_) { /* profile not created yet, that's ok */ }
+        navigate('/student/qr');
+      } else {
+        throw new Error('Rol no reconocido: ' + role);
       }
-
-
-      // 2. Check localStorage for updated socio credentials
-      const sociosRaw = localStorage.getItem('socios');
-      console.log('Raw socios from localStorage:', sociosRaw);
-      
-      let socios = [];
-      if (sociosRaw) {
-        const parsed = JSON.parse(sociosRaw);
-        socios = Array.isArray(parsed) ? parsed : Object.values(parsed);
-      }
-      console.log('Socios array:', socios);
-
-      const socioFound = socios.find(
-        (socio) =>
-          socio.username === formData.username &&
-          socio.contraseña === formData.contraseña
-      );
-
-      if (socioFound) {
-        console.log('✅ Socio found:', socioFound);
-        const organizaciones = storageService.getOrganizaciones();
-        const orgFound = organizaciones.find(
-          (org) => org.id_organizacion === socioFound.id_organizacion
-        );
-        if (orgFound) {
-          sessionStorage.setItem('organization', JSON.stringify(orgFound));
-        }
-        sessionStorage.setItem('username', socioFound.username);
-        sessionStorage.setItem('tipo', 'socio');
-        sessionStorage.setItem('user', JSON.stringify(socioFound));
-        return navigate(`/socio/main_pageSocio/${socioFound.id_organizacion}`);
-      }
-
-      // 3. Check localStorage for student credentials
-      const usuarios = storageService.getUsuarios();
-      console.log('Usuarios from storage:', usuarios);
-      
-      const usuarioReal = usuarios.find(
-        (user) =>
-          user.username === formData.username &&
-          user.contraseña === formData.contraseña
-      );
-
-      if (usuarioReal) {
-        console.log('Usuario found:', usuarioReal);
-        if (usuarioReal.tipo === 'student') {
-          const estudiantes = storageService.getEstudiantes();
-          const studentData = estudiantes.find(
-            (est) => est.id_usuario === usuarioReal.id_usuario
-          );
-
-          sessionStorage.setItem('username', usuarioReal.username);
-          sessionStorage.setItem('tipo', 'student');
-          sessionStorage.setItem('user', JSON.stringify(usuarioReal));
-          sessionStorage.setItem(
-            'studentData',
-            JSON.stringify(studentData || {})
-          );
-          return navigate('/student/qr');
-        }
-      }
-
-      console.log('❌ No user found');
-      setGeneralError('Credenciales incorrectas. Intenta de nuevo.');
     } catch (error) {
       console.error('Login error:', error);
-      setGeneralError('Ocurrió un error. Intenta de nuevo.');
+      setGeneralError(error.message || 'Ocurrió un error. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }

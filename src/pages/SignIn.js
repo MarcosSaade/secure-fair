@@ -114,7 +114,7 @@ const SignUp = () => {
     setGeneralError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError('');
     setSuccessMessage('');
@@ -124,60 +124,39 @@ const SignUp = () => {
     setIsLoading(true);
 
     try {
+      const apiBase = `/api`;
+      const res = await fetch(`${apiBase}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          tipo: 'student'
+        })
+      });
+      const result = await res.json();
+      
+      if (!result.success) {
+        setGeneralError(result.message || 'Error al crear la cuenta. Intenta de nuevo.');
+        setIsLoading(false);
+        return;
+      }
+
+      const usuario = result.data;
+      
+      // Keep session sync
+      sessionStorage.setItem('user', JSON.stringify(usuario));
+      sessionStorage.setItem('password', formData.password);
+      sessionStorage.setItem('username', formData.username);
+      sessionStorage.setItem('tipo', 'student');
+
+      setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo...');
+
+      // Redirect after 1.5 seconds
       setTimeout(() => {
-        const id_usuario = generateUUID();
-        const {username, password} = formData;
+        navigate('/student/register');
+      }, 1500);
 
-        const usuario = {
-          id_usuario,
-          username,
-          contraseña: password,
-          tipo: 'student',
-          activo: true
-        }
-        storageService.saveUsuario(id_usuario, usuario);
-
-        // Guardar en estudiantes (solo vínculo inicial)
-        storageService.saveEstudiante({
-          id_usuario, // FK hacia usuarios
-        });
-
-        sessionStorage.setItem('user', JSON.stringify(usuario));
-        sessionStorage.setItem('password', password);
-        sessionStorage.setItem('username', username);
-        sessionStorage.setItem('tipo', 'student');
-
-        setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo...');
-
-        // Create auth data (username + password only)
-       // const authData = {
-        //  username: formData.username,
-         // password: formData.password,
-         // createdAt: new Date().toISOString().split('T')[0],
-        //};
-
-        // Store auth data in localStorage
-        // When backend is ready, use user_id instead of usename.
-        // This should be replaced in all documents and components that use student data.
-     //   const studentAccounts = JSON.parse(localStorage.getItem('studentAccounts') || '{}');
-      //  studentAccounts[formData.username] = {
-        //  ...studentAccounts[formData.username],
-         // ...authData,
-        //};
-        //localStorage.setItem('studentAccounts', JSON.stringify(studentAccounts));
-
-        // Store in sessionStorage for current session
-       // sessionStorage.setItem('username', formData.username);
-       // sessionStorage.setItem('password', formData.password);
-        //sessionStorage.setItem('type', 'student');
-
-       // setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo...');
-
-        // Redirect after 1.5 seconds
-        setTimeout(() => {
-          navigate('/student/register');
-        }, 1500);
-      }, 800);
     } catch (error) {
       setGeneralError('Error al crear la cuenta. Intenta de nuevo.');
       setIsLoading(false);

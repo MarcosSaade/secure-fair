@@ -31,15 +31,45 @@ const MainPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
-    const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
-    const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
-    const studsRaw = JSON.parse(localStorage.getItem("estudiantes")) || [];
+    const fetchData = async () => {
+      try {
+        const apiBase = `/api`;
+        
+        const [orgsRes, projsRes, studsRes] = await Promise.all([
+          fetch(`${apiBase}/organizations`),
+          fetch(`${apiBase}/projects`),
+          fetch(`${apiBase}/students`)
+        ]);
 
-    const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
+        const orgsData = await orgsRes.json();
+        const projsData = await projsRes.json();
+        const studsData = await studsRes.json();
 
-    setOrganizaciones(orgs);
-    setProjects(projs);
-    setStudents(studs);
+        const orgs = orgsData.data || [];
+        const projs = projsData.data || [];
+        const studs = studsData.data || [];
+
+        setOrganizaciones(orgs);
+        setProjects(projs);
+        setStudents(studs);
+        
+        localStorage.setItem("organizaciones", JSON.stringify(orgs));
+        localStorage.setItem("proyectos", JSON.stringify(projs));
+        localStorage.setItem("estudiantes", JSON.stringify(studs));
+        
+      } catch (err) {
+        console.error("Error fetching data from API:", err);
+        const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
+        const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
+        const studsRaw = JSON.parse(localStorage.getItem("estudiantes")) || [];
+        const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
+        setOrganizaciones(orgs);
+        setProjects(projs);
+        setStudents(studs);
+      }
+    };
+    
+    fetchData();
   }, []);
 
  
@@ -52,8 +82,8 @@ const MainPage = () => {
       // Handle new format (enrollments array)
       if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
         s.enrollments.forEach((enrollment) => {
-          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-          const periodo = enrollment.periodo || project?.periodo;
+          const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(enrollment.id_proyecto || enrollment.project_id));
+          const periodo = enrollment.periodo || project?.periodo || project?.period_id;
           if (periodo) {
             periods.add(periodo);
           }
@@ -61,9 +91,9 @@ const MainPage = () => {
       }
       // Handle old format (single id_proyecto)
       else if (s.id_proyecto) {
-        const project = projects.find(p => p.id_proyecto === s.id_proyecto);
-        if (project?.periodo) {
-          periods.add(project.periodo);
+        const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(s.id_proyecto));
+        if (project?.periodo || project?.period_id) {
+          periods.add(project.periodo || project.period_id);
         }
       }
     });
@@ -177,8 +207,8 @@ const MainPage = () => {
             >
               <MenuItem value="">Todas</MenuItem>
               {organizaciones.map((org) => (
-                <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
-                  {org.nombre_osf}
+                <MenuItem key={org.id_organizacion || org.id} value={org.id_organizacion || org.id}>
+                  {org.nombre_osf || org.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -192,10 +222,10 @@ const MainPage = () => {
             >
               <MenuItem value="">Todos</MenuItem>
               {projects
-                .filter((proj) => (selectedOrg ? proj.id_organizacion === Number(selectedOrg) : true))
+                .filter((proj) => (selectedOrg ? Number(proj.id_organizacion || proj.org_id) === Number(selectedOrg) : true))
                 .map((proj) => (
-                  <MenuItem key={proj.id_proyecto} value={proj.id_proyecto}>
-                    {proj.nombre_proyecto}
+                  <MenuItem key={proj.id_proyecto || proj.id} value={proj.id_proyecto || proj.id}>
+                    {proj.nombre_proyecto || proj.name}
                   </MenuItem>
                 ))}
             </TextField>

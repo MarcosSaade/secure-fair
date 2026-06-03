@@ -27,14 +27,12 @@ const StudentQR = () => {
   const user = JSON.parse(sessionStorage.getItem('user'));
   const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
 
+  // Keep QR data minimal and stable for easy scanning
+  // Only encode the matricula (primary key), reader can look up the rest
   const qrValue = JSON.stringify({
-    id_usuario: user?.id_usuario || "",
-    username: user?.username || "",
-    matricula: studentData?.matricula || "",
-    nombre: studentData?.nombre || "",
-    apellidos: studentData?.apellidos || "",
-    hora_registro: studentData?.hora_registro || "",
-    timestamp: new Date().toISOString(),
+    m: studentData?.matricula || "",
+    id: user?.id_usuario || user?.id || "",
+    u: user?.username || "",
   });
 
   // --- Current Time ---
@@ -46,6 +44,22 @@ const StudentQR = () => {
   // --- Validation Logic ---
   useEffect(() => {
     const checkStatus = async () => {
+      // 1. Sincronización en tiempo real desde la Base de Datos (Backend)
+      try {
+        const apiBase = `/api`;
+        const res = await fetch(`${apiBase}/students/${user?.id_usuario || user?.id}`);
+        const result = await res.json();
+        
+        if (result.success && result.data.checked_in_at) {
+          setIsValidated(true);
+          setIsDenied(false);
+          return;
+        }
+      } catch (err) {
+        // Ignorar errores de red para usar el fallback local
+      }
+
+      // 2. Fallback: LocalStorage (misma PC / sin conexión)
       const checkedInStudents = await getCheckedInStudentsToday();
       const isCheckedIn = checkedInStudents.some(
         student => student.matricula === studentData?.matricula
@@ -145,7 +159,14 @@ const StudentQR = () => {
             </Typography>
 
             <Box sx={{ backgroundColor: "white", p: { xs: 2, sm: 3 }, borderRadius: theme.shape.borderRadius, boxShadow: `0 8px 32px ${getQRColor()}40`, border: `3px solid ${getQRColor()}`, mb: 3, transition: "all 0.3s ease" }}>
-              <QRCodeCanvas value={qrValue} size={220} fgColor={getQRColor()} bgColor="#ffffff" level="H" includeMargin={true} />
+              {/* level="L" = lowest error correction = least dense = easiest to scan */}
+              <QRCodeCanvas value={qrValue} size={240} fgColor={getQRColor()} bgColor="#ffffff" level="L" includeMargin={true} />
+            </Box>
+
+            {/* Matrícula como código de respaldo */}
+            <Box sx={{ mb: 2, px: 2, py: 1, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.04)', border: '1px dashed', borderColor: 'divider' }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.25 }}>Matrícula (respaldo manual)</Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.25rem', letterSpacing: 2, fontFamily: 'monospace' }}>{studentData?.matricula || '—'}</Typography>
             </Box>
 
             <Box sx={{ display: "inline-block", px: 3, py: 1.5, borderRadius: 2, backgroundColor: `${getQRColor()}20`, border: `2px solid ${getQRColor()}`, mb: 4 }}>

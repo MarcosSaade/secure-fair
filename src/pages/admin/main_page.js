@@ -48,15 +48,47 @@ const MainPage = () => {
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const fileInputRef = useRef(null);
   useEffect(() => {
-    const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
-    const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
-    const studsRaw = JSON.parse(localStorage.getItem("estudiantes")) || [];
+    const fetchData = async () => {
+      try {
+        const apiBase = `/api`;
+        
+        const [orgsRes, projsRes, studsRes] = await Promise.all([
+          fetch(`${apiBase}/organizations`),
+          fetch(`${apiBase}/projects`),
+          fetch(`${apiBase}/students`)
+        ]);
 
-    const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
+        const orgsData = await orgsRes.json();
+        const projsData = await projsRes.json();
+        const studsData = await studsRes.json();
 
-    setOrganizaciones(orgs);
-    setProjects(projs);
-    setStudents(studs);
+        const orgs = orgsData.data || [];
+        const projs = projsData.data || [];
+        const studs = studsData.data || [];
+
+        setOrganizaciones(orgs);
+        setProjects(projs);
+        setStudents(studs);
+        
+        // Update local storage so other parts of the app can use the fresh data
+        localStorage.setItem("organizaciones", JSON.stringify(orgs));
+        localStorage.setItem("proyectos", JSON.stringify(projs));
+        localStorage.setItem("estudiantes", JSON.stringify(studs));
+        
+      } catch (err) {
+        console.error("Error fetching data from API:", err);
+        // Fallback to localStorage
+        const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
+        const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
+        const studsRaw = JSON.parse(localStorage.getItem("estudiantes")) || [];
+        const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
+        setOrganizaciones(orgs);
+        setProjects(projs);
+        setStudents(studs);
+      }
+    };
+    
+    fetchData();
   }, []);
 
   // Filtros de estudiantes
@@ -98,20 +130,14 @@ const MainPage = () => {
     const matchesCarrera = studentCarrera ? (s.carrera?.toLowerCase().includes(studentCarrera.toLowerCase())) : true;
     let matchesPeriod = true;
     if (selectedPeriod) {
-      // Handle new format (enrollments array)
       if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
         matchesPeriod = s.enrollments.some((enrollment) => {
-          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-          return (enrollment.periodo || project?.periodo) === selectedPeriod;
+          return enrollment.periodo === selectedPeriod;
         });
-      } 
-      // Handle old format (single id_proyecto)
-      else if (s.id_proyecto) {
-        const project = projects.find(p => p.id_proyecto === s.id_proyecto);
-        matchesPeriod = project?.periodo === selectedPeriod;
-      } 
-      // No project enrolled
-      else {
+      } else if (s.id_proyecto) {
+        const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(s.id_proyecto));
+        matchesPeriod = (project?.periodo) === selectedPeriod;
+      } else {
         matchesPeriod = false;
       }
     }
@@ -129,32 +155,8 @@ const MainPage = () => {
 
  
 
-  // Obtener periodo del proyecto
-  const getUniquePeriods = () => {
-    const periods = new Set();
-    
-    students.forEach((s) => {
-      // Handle new format (enrollments array)
-      if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
-        s.enrollments.forEach((enrollment) => {
-          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-          const periodo = enrollment.periodo || project?.periodo;
-          if (periodo) {
-            periods.add(periodo);
-          }
-        });
-      }
-      // Handle old format (single id_proyecto)
-      else if (s.id_proyecto) {
-        const project = projects.find(p => p.id_proyecto === s.id_proyecto);
-        if (project?.periodo) {
-          periods.add(project.periodo);
-        }
-      }
-    });
-    
-    return Array.from(periods).sort();
-  };
+  // Returns the 4 fixed period names
+  const getUniquePeriods = () => ['Invierno', 'Verano', 'Ago-Dic', 'Ene-Jul'];
 
 
   // Navegación
@@ -212,11 +214,11 @@ const handleExportCSV = () => {
     // Handle new format (enrollments array)
     if (Array.isArray(student.enrollments) && student.enrollments.length > 0) {
       student.enrollments.forEach((enrollment) => {
-        const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-        const periodo = enrollment.periodo || project?.periodo;
+        const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(enrollment.id_proyecto || enrollment.project_id));
+        const periodo = enrollment.periodo || project?.periodo || project?.period_id;
         
         // Only include if period filter matches or no period filter. AND if organization filter matches
-        if ((!selectedPeriod || periodo === selectedPeriod) &&
+        if ((!selectedPeriod || String(periodo) === String(selectedPeriod)) &&
           (!selectedOrg || enrollment.id_organizacion === Number(selectedOrg))){
           dataToExport.push({
             Nombre: `${student.nombre} ${student.apellidos || ""}`,
@@ -234,12 +236,12 @@ const handleExportCSV = () => {
     }
     // Handle old format (single id_proyecto)
     else if (student.id_proyecto) {
-      const project = projects.find(p => p.id_proyecto === student.id_proyecto);
-      const periodo = project?.periodo;
+      const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(student.id_proyecto));
+      const periodo = project?.periodo || project?.period_id;
     
       
       // Only include if period filter matches or no period filter. or if organization filter matches
-      if ((!selectedPeriod || periodo === selectedPeriod) &&
+      if ((!selectedPeriod || String(periodo) === String(selectedPeriod)) &&
         (!selectedOrg || student.id_organizacion === Number(selectedOrg)))
       {
         dataToExport.push({
@@ -432,8 +434,7 @@ const handleExportCSV = () => {
         sx={{
           flexGrow: 1,
           backgroundColor: '#f5f7fa',
-          px: 3,
-          py:2,
+          p: 5,
           position: 'relative', // Needed for the show sidebar button
         }}
       >
@@ -451,7 +452,7 @@ const handleExportCSV = () => {
           </IconButton>
         )}
 
-        <Container sx= {{width: '%100'}}>
+        <Container maxWidth="xl">
           {/* HEADER */}
           <Typography variant="h4" fontWeight="bold" gutterBottom>
             Servicio Social - Administración
@@ -483,9 +484,9 @@ const handleExportCSV = () => {
               onChange={(e) => setSelectedOrg(e.target.value)}
             >
               <MenuItem value="">Todas</MenuItem>
-              {organizaciones.map((org) => (
-                <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
-                  {org.nombre_osf}
+              {[...organizaciones].sort((a, b) => (a.nombre_osf || a.name || '').localeCompare(b.nombre_osf || b.name || '', 'es')).map((org) => (
+                <MenuItem key={org.id_organizacion || org.id} value={org.id_organizacion || org.id}>
+                  {org.nombre_osf || org.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -498,11 +499,12 @@ const handleExportCSV = () => {
               onChange={(e) => setSelectedProject(e.target.value)}
             >
               <MenuItem value="">Todos</MenuItem>
-              {projects
-                .filter((proj) => (selectedOrg ? proj.id_organizacion === Number(selectedOrg) : true))
+              {[...projects]
+                .filter((proj) => (selectedOrg ? Number(proj.id_organizacion || proj.org_id) === Number(selectedOrg) : true))
+                .sort((a, b) => (a.nombre_proyecto || a.name || '').localeCompare(b.nombre_proyecto || b.name || '', 'es'))
                 .map((proj) => (
-                  <MenuItem key={proj.id_proyecto} value={proj.id_proyecto}>
-                    {proj.nombre_proyecto}
+                  <MenuItem key={proj.id_proyecto || proj.id} value={proj.id_proyecto || proj.id}>
+                    {proj.nombre_proyecto || proj.name}
                   </MenuItem>
                 ))}
             </TextField>
@@ -575,7 +577,7 @@ const handleExportCSV = () => {
       </Dialog>
 
       {/* EXPORT DIALOG */}
-      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)} maxWidth="xl" fullWidth>
         <DialogTitle>Selecciona el formato de exportación</DialogTitle>
         <DialogActions sx={{ gap: 1 }}>
           <Button variant="contained" onClick={handleExportCSV}>

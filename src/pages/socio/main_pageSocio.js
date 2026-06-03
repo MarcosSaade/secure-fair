@@ -20,6 +20,8 @@ import {
 
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import QrCodeIcon from "@mui/icons-material/QrCode";
+import { QRCodeSVG } from 'qrcode.react';
 
 //import { students as studentsData } from "../students.js";
 //import { projects as projectsData } from "../projects.js";
@@ -42,10 +44,11 @@ const MainSocio = () => {
   });
   const [copiedCode, setCopiedCode] = useState(null);
 
-  // -------------------------
-  // Obtener organización
-  // -------------------------
-  const organization = orgsData?.find((org) => org.id_organizacion === Number(orgId));
+  // Get org from localStorage (populated from real DB), not from hardcoded dummy file
+  const allOrgs = storageService.getOrganizaciones();
+  const organization = allOrgs.find(
+    (org) => String(org.id_organizacion || org.id) === String(orgId)
+  );
 
   // -------------------------
   // Proyectos de la organización
@@ -63,7 +66,27 @@ const MainSocio = () => {
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
+      try {
+        const apiBase = `/api`;
+        
+        const [orgsRes, projsRes, studsRes] = await Promise.all([
+          fetch(`${apiBase}/organizations`),
+          fetch(`${apiBase}/projects`),
+          fetch(`${apiBase}/students`)
+        ]);
+
+        const orgsData = await orgsRes.json();
+        const projsData = await projsRes.json();
+        const studsData = await studsRes.json();
+
+        if (orgsData.success) localStorage.setItem("organizaciones", JSON.stringify(orgsData.data));
+        if (projsData.success) localStorage.setItem("proyectos", JSON.stringify(projsData.data));
+        if (studsData.success) localStorage.setItem("estudiantes", JSON.stringify(studsData.data));
+      } catch (err) {
+        console.error("Error syncing with API:", err);
+      }
+
       const studsRaw = storageService.getEstudiantes() || [];
       const storedStudents = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
 
@@ -72,13 +95,20 @@ const MainSocio = () => {
       const storedProjects = storageService.getProyectos() || [];
 
       const orgProject = storedProjects.filter(
-        (proj) => Number(proj.id_organizacion) === Number(orgId)
+        (proj) => Number(proj.id_organizacion) === Number(orgId) || Number(proj.org_id) === Number(orgId)
       );
       setProjects(orgProject);
 
-      const orgStudents = storedStudents.filter(student =>
-        orgProject.some(proj => Number(proj.id_proyecto) === Number(student.id_proyecto))
-      );
+      const orgStudents = storedStudents.filter(student => {
+        // Handle API enrollments array
+        if (Array.isArray(student.enrollments) && student.enrollments.length > 0) {
+          return student.enrollments.some(enrollment => 
+            orgProject.some(proj => Number(proj.id_proyecto || proj.id) === Number(enrollment.id_proyecto || enrollment.project_id))
+          );
+        }
+        // Handle old single project format
+        return orgProject.some(proj => Number(proj.id_proyecto || proj.id) === Number(student.id_proyecto));
+      });
       setStudentsArray(orgStudents);
     };
      
@@ -157,37 +187,49 @@ const MainSocio = () => {
   }
 
   // -------------------------
-  // Generate Code Function
+  // Generate Code Function — saves to DB
   // -------------------------
-  const generateEnrollmentCode = () => {
+  const generateEnrollmentCode = async () => {
     if (!selectedProject) {
       alert("Selecciona un proyecto primero para generar códigos de inscripción.");
       return;
     }
 
-    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "";
-    for (let i = 0; i < 12; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    try {
+      const apiBase = `/api`;
+      const user = JSON.parse(sessionStorage.getItem('user'));
+      const issued_by = user?.id_usuario || user?.id || 1;
+
+      const res = await fetch(`${apiBase}/codes/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: Number(selectedProject),
+          issued_by,
+          expires_in_hours: 1
+        })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        const newCode = {
+          ...result.data,
+          code_id: result.data.id,
+          id_proyecto: Number(selectedProject),
+          id_organizacion: Number(orgId),
+          is_used: false,
+        };
+        const updatedCodes = [...generatedCodes, newCode];
+        setGeneratedCodes(updatedCodes);
+        // Keep local cache in sync
+        localStorage.setItem("enrollmentCodes", JSON.stringify(updatedCodes));
+      } else {
+        alert(`Error al generar código: ${result.message}`);
+      }
+    } catch (err) {
+      console.error('Error generating code:', err);
+      alert('Error de conexión al generar el código. Verifica el backend.');
     }
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour expiry
-
-    const newCode = {
-      code_id: Math.max(...generatedCodes.map((c) => c.code_id), 0) + 1,
-      code: code,
-      id_proyecto: Number(selectedProject),
-      id_organizacion: Number(orgId),
-      created_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
-      is_used: false,
-      used_by: null,
-      used_at: null,
-    };
-
-    setGeneratedCodes([...generatedCodes, newCode]);
-    localStorage.setItem("enrollmentCodes", JSON.stringify([...generatedCodes, newCode]));
   };
 
   // -------------------------
@@ -323,6 +365,13 @@ const MainSocio = () => {
                   </Typography>
                 )}
               </Box>
+              
+              <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <QRCodeSVG value={projectCodes[projectCodes.length - 1].code} size={200} />
+                <Typography variant="caption" sx={{ mt: 1, color: 'text.secondary' }}>
+                  Pide al estudiante que escanee este código
+                </Typography>
+              </Box>
             </Box>
           )}
         </Paper>
@@ -367,6 +416,7 @@ const MainSocio = () => {
 // -------------------------
 const CodeCard = ({ codeObj, onCopy, isCopied }) => {
   const [timeLeft, setTimeLeft] = React.useState("");
+  const [showQR, setShowQR] = React.useState(false);
 
   React.useEffect(() => {
     const calculateTimeLeft = () => {
@@ -408,14 +458,24 @@ const CodeCard = ({ codeObj, onCopy, isCopied }) => {
         <Typography variant="body2" color="text.secondary">
           Código: <strong style={{ fontFamily: "monospace" }}>{codeObj.code}</strong>
         </Typography>
-        <IconButton
-          size="small"
-          onClick={() => onCopy(codeObj.code)}
-          sx={{ color: isCopied ? "#22c55e" : "#666" }}
-          disabled={codeObj.is_used}
-        >
-          <ContentCopyIcon fontSize="small" />
-        </IconButton>
+        <Box>
+          <IconButton
+            size="small"
+            onClick={() => setShowQR(!showQR)}
+            sx={{ color: showQR ? "#0369a1" : "#666", mr: 1 }}
+            disabled={codeObj.is_used || isExpired}
+          >
+            <QrCodeIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => onCopy(codeObj.code)}
+            sx={{ color: isCopied ? "#22c55e" : "#666" }}
+            disabled={codeObj.is_used || isExpired}
+          >
+            <ContentCopyIcon fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
 
       <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
@@ -437,6 +497,15 @@ const CodeCard = ({ codeObj, onCopy, isCopied }) => {
         <Typography variant="caption" display="block" sx={{ mt: 1, color: "#dc2626" }}>
           Utilizado por: {codeObj.used_by} en {new Date(codeObj.used_at).toLocaleString()}
         </Typography>
+      )}
+
+      {showQR && !codeObj.is_used && !isExpired && (
+        <Box sx={{ mt: 2, p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: 'white', borderRadius: 2 }}>
+          <QRCodeSVG value={codeObj.code} size={200} />
+          <Typography variant="caption" sx={{ mt: 1, color: 'text.secondary' }}>
+            Pide al estudiante que escanee este código
+          </Typography>
+        </Box>
       )}
     </Paper>
   );

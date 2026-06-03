@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -14,260 +14,294 @@ import {
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
+import jsQR from "jsqr";
 
-import { projects as projectsData } from "../projects.js";
 import * as storageService from '../../services/StorageService';
 
 const StudentEnroll = () => {
-  const [formData, setFormData] = useState({
-    codigo: "",
-  });
+  const [formData, setFormData] = useState({ codigo: "" });
   const [accepted, setAccepted] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
   const [projectInfo, setProjectInfo] = useState(null);
 
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
+
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
-    if (validationResult) {
-      setValidationResult(null);
+  // -------------------------
+  // Camera Functions
+  // -------------------------
+  const startCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Tu dispositivo no soporta el acceso a la cámara o necesitas usar https://");
+      return;
+    }
+
+    try {
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+      } catch (errFallback) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = async () => {
+          await videoRef.current.play();
+          setCameraActive(true);
+          scanQR();
+        };
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      alert(`No se pudo abrir la cámara: ${err.message || "Permiso denegado"}`);
     }
   };
 
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      setCameraActive(false);
+    }
+  };
+
+  const scanQR = () => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+
+    if (!canvas || !video) {
+      requestAnimationFrame(scanQR);
+      return;
+    }
+
+    if (video.readyState !== 4 || video.videoWidth === 0 || video.videoHeight === 0) {
+      requestAnimationFrame(scanQR);
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+      if (code && code.data) {
+        stopCamera();
+        setFormData(prev => ({ ...prev, codigo: code.data }));
+        setValidationResult(null);
+        return;
+      }
+    } catch (err) {
+      console.log("Safe scan error:", err);
+    }
+
+    requestAnimationFrame(scanQR);
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (validationResult) setValidationResult(null);
+  };
+
   // -------------------------
-  // Validate Code (REFACTORED FOR MULTI-PERIOD ENROLLMENT)
+  // Validate Code via API (source of truth)
   // -------------------------
-  const validateCode = () => {
+  const validateCode = async () => {
     if (!formData.codigo.trim()) {
-      setValidationResult({
-        success: false,
-        message: "Ingresa un código válido",
-      });
+      setValidationResult({ success: false, message: "Ingresa un código válido" });
       return;
     }
 
     setValidating(true);
 
-    setTimeout(() => {
-      // READ FROM LOCALSTORAGE
-      const savedCodes =
-        JSON.parse(localStorage.getItem("enrollmentCodes")) || [];
-
-      const codeObj = savedCodes.find(
-        (code) => code.code === formData.codigo.toUpperCase()
-      );
-
-      if (!codeObj) {
-        setValidationResult({
-          success: false,
-          message: "El código ingresado no es válido o no existe.",
-        });
-        setValidating(false);
-        return;
-      }
-
-      // Check expiration
-      const expiresAt = new Date(codeObj.expires_at).getTime();
-      const now = new Date().getTime();
-
-      if (expiresAt < now) {
-        setValidationResult({
-          success: false,
-          message:
-            "El código ha expirado. Solicita uno nuevo a tu socio-formador.",
-        });
-        setValidating(false);
-        return;
-      }
-
-      // Check if code already used (THIS REMAINS - block code reuse)
-      if (codeObj.is_used) {
-        setValidationResult({
-          success: false,
-          message: "Este código ya ha sido utilizado.",
-        });
-        setValidating(false);
-        return;
-      }
-
-      // Get student data
+    try {
       const user = JSON.parse(sessionStorage.getItem('user'));
       const studentData = JSON.parse(sessionStorage.getItem("studentData") || "{}");
 
-      if (!studentData || !user) {
-        setValidationResult({
-          success: false,
-          message: "No se pudo identificar al estudiante. Inicia sesión nuevamente.",
-        });
+      if (!user) {
+        setValidationResult({ success: false, message: "No se pudo identificar al estudiante. Inicia sesión nuevamente." });
         setValidating(false);
         return;
       }
 
-      // Get project to retrieve periodo
-      const project = projectsData.find(
-        (p) => p.id_proyecto === codeObj.id_proyecto
-      );
+      const student_user_id = user?.id_usuario || user?.id;
+      const apiBase = `/api`;
 
+      // Validate code against the DATABASE (not localStorage)
+      const validateRes = await fetch(`${apiBase}/codes/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: formData.codigo.toUpperCase(),
+          student_user_id: student_user_id
+        })
+      });
+      const validateResult = await validateRes.json();
+
+      if (!validateResult.success) {
+        setValidationResult({ success: false, message: validateResult.message });
+        setValidating(false);
+        return;
+      }
+
+      // Code is valid — project comes from API response
+      const project = validateResult.data?.project;
       if (!project) {
-        setValidationResult({
-          success: false,
-          message: "El proyecto asociado al código no existe.",
-        });
+        setValidationResult({ success: false, message: "El proyecto asociado al código no existe." });
         setValidating(false);
         return;
       }
 
-      // ============================================
-      // NEW LOGIC: Check enrollment by PERIOD only
-      // Periodo comes from PROJECT, not codeObj
-      // ============================================
-      const hasEnrollmentInPeriod = Array.isArray(studentData?.enrollments)
-        && studentData.enrollments.some(enr => enr.periodo === project.periodo);
+      // Normalize project fields for legacy compatibility
+      const projectNormalized = {
+        ...project,
+        id_proyecto: project.id_proyecto || project.id,
+        nombre_proyecto: project.nombre_proyecto || project.name,
+        id_organizacion: project.id_organizacion || project.org_id,
+      };
 
-      if (hasEnrollmentInPeriod) {
-        setValidationResult({
-          success: false,
-          message: `Ya estás inscrito en un proyecto en el periodo ${project.periodo}. No puedes inscribirte en más de uno en el mismo periodo.`,
-        });
-        setValidating(false);
-        return;
-      }
+      // Check if student already enrolled in this period (via DB enrollments)
+      const studentRes = await fetch(`${apiBase}/students/${student_user_id}`);
+      const studentResult = await studentRes.json();
 
-      // UPDATE PROJECT SLOTS
-      const proyectos = JSON.parse(localStorage.getItem("proyectos")) || [];
-      const proyectoIndex = proyectos.findIndex(
-        (p) => p.id_proyecto === codeObj.id_proyecto
-      );
-
-      // Check available slots
-      if (proyectoIndex >= 0) {
-        const proyecto = proyectos[proyectoIndex];
-        const disponibles = proyecto.cupo_estudiantes - (proyecto.inscritos || 0);
-
-        if (disponibles <= 0) {
+      if (studentResult.success) {
+        const dbEnrollments = studentResult.data?.enrollments || [];
+        const projectId = projectNormalized.id_proyecto;
+        const alreadyEnrolled = dbEnrollments.some(e =>
+          Number(e.project_id || e.id_proyecto) === Number(projectId)
+        );
+        if (alreadyEnrolled) {
           setValidationResult({
             success: false,
-            message: "Este proyecto ya no tiene cupo disponible. Contacta al servicio social y al socio-formador para modificar el cupo en el proyecto.",
+            message: `Ya estás inscrito en este proyecto.`,
           });
           setValidating(false);
           return;
         }
-
-        // Slots available, increment inscritos
-        proyecto.inscritos = (proyecto.inscritos || 0) + 1;
-        localStorage.setItem("proyectos", JSON.stringify(proyectos));
-        window.dispatchEvent(new Event("projectsUpdated"));
       }
 
-      // Mark code as used (keeps the block on code reuse)
-      codeObj.is_used = true;
-      codeObj.used_at = new Date().toISOString();
-      codeObj.used_by = studentData.matricula;
-      localStorage.setItem("enrollmentCodes", JSON.stringify(savedCodes));
+      // === SAVE ENROLLMENT TO DATABASE ===
+      const enrollRes = await fetch(`${apiBase}/enrollments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_user_id: student_user_id,
+          project_id: projectNormalized.id_proyecto,
+        })
+      });
+      const enrollResult = await enrollRes.json();
 
-      // Get current student from storage service
-      const estudiantes = storageService.getEstudiantes();
-      const currentStudent = estudiantes.find(est => est.id_usuario === user.id_usuario);
+      if (!enrollResult.success) {
+        // Already enrolled check (unique constraint)
+        if (enrollResult.message?.includes('ya está inscrito') || enrollResult.message?.includes('unique')) {
+          setValidationResult({
+            success: false,
+            message: "Ya estás inscrito en un proyecto en este periodo.",
+          });
+        } else {
+          setValidationResult({
+            success: false,
+            message: `Error al inscribirse: ${enrollResult.message}`,
+          });
+        }
+        setValidating(false);
+        return;
+      }
 
-      console.log("Current student before update:", currentStudent);
-      console.log('User info from sessionStorage:', user);
-      console.log('estudiantes from storageService:', estudiantes);
+      console.log('✅ Enrollment saved to DB:', enrollResult.data);
 
-      // ============================================
-      // NEW LOGIC: Append enrollment to array
-      // Instead of replacing, add to enrollments list
-      // ============================================
-      const currentEnrollments = Array.isArray(currentStudent?.enrollments)
-        ? currentStudent.enrollments
-        : [];
-
+      // Update local session cache with new enrollment
       const newEnrollment = {
-        id_proyecto: codeObj.id_proyecto,
-        periodo: project.periodo,
-        id_organizacion: codeObj.id_organizacion,
+        id_proyecto: projectNormalized.id_proyecto,
+        project_id: projectNormalized.id_proyecto,
+        id_organizacion: projectNormalized.id_organizacion,
       };
 
+      const currentEnrollments = Array.isArray(studentData?.enrollments) ? studentData.enrollments : [];
       const updatedStudent = {
-        ...currentStudent,
-        id_usuario: user.id_usuario,
+        ...studentData,
+        id_usuario: student_user_id,
         enrollments: [...currentEnrollments, newEnrollment],
       };
 
-      console.log("Updated student with new enrollment:", updatedStudent);
       storageService.saveEstudiante(updatedStudent);
-
       sessionStorage.setItem("studentData", JSON.stringify(updatedStudent));
-      console.log("Disparando evento studentUpdated");
-      console.log('Verificando localStorage:', storageService.getEstudiantes());
-
       window.dispatchEvent(new Event('studentUpdated'));
 
-      setProjectInfo(project);
+      // Also update project slot count locally
+      try {
+        const proyectos = JSON.parse(localStorage.getItem("proyectos")) || [];
+        const proyectoIndex = proyectos.findIndex(p =>
+          Number(p.id_proyecto || p.id) === Number(projectNormalized.id_proyecto)
+        );
+        if (proyectoIndex >= 0) {
+          proyectos[proyectoIndex].inscritos = (proyectos[proyectoIndex].inscritos || 0) + 1;
+          localStorage.setItem("proyectos", JSON.stringify(proyectos));
+          window.dispatchEvent(new Event("projectsUpdated"));
+        }
+      } catch (e) { /* non-critical */ }
 
+      setProjectInfo(projectNormalized);
       setValidationResult({
         success: true,
-        message: `¡Código válido! Te has inscrito al proyecto: ${project.nombre_proyecto}`,
+        message: `¡Inscripción exitosa! Te has inscrito al proyecto: ${projectNormalized.nombre_proyecto}`,
       });
 
-      setValidating(false);
-    }, 1500);
+    } catch (err) {
+      console.error('Error validating code:', err);
+      setValidationResult({
+        success: false,
+        message: "Error de conexión. Verifica que el backend esté corriendo.",
+      });
+    }
+
+    setValidating(false);
   };
 
   const handleContinue = () => {
-    console.log("=== handleContinue EJECUTADO ===");
-    console.log("accepted:", accepted);
-    console.log("validationResult:", validationResult);
-    console.log("projectInfo ACTUAL:", projectInfo);   // ← Esto es clave
-    console.log("formData.codigo:", formData.codigo);
-
     if (!accepted) {
       alert("Debes aceptar las políticas del servicio social antes de continuar.");
       return;
     }
-
     if (!validationResult || !validationResult.success) {
       alert("Valida tu código primero.");
       return;
     }
-
     if (!projectInfo) {
-      console.error("ERROR GRAVE: projectInfo es null/undefined");
       alert("No se encontró la información del proyecto. Valida el código nuevamente.");
       return;
     }
 
-    console.log("✅ Todo correcto → Navegando a confirmation con projectInfo:", projectInfo.nombre_proyecto);
-
     navigate("/student/confirmation", {
-      state: { 
-        projectInfo: projectInfo,
-        enrollmentCode: formData.codigo 
-      },
+      state: { projectInfo, enrollmentCode: formData.codigo },
     });
-
-    console.log("navigate() llamado correctamente");
   };
 
-  console.log("=== DEBUG CONTINUE BUTTON ===");
-  console.log("accepted:", accepted);
-  console.log("validationResult:", validationResult);
-  console.log("disabled debería ser:", !accepted || !validationResult?.success);
   return (
     <Container maxWidth="sm">
       <Box sx={{ mt: 8 }}>
-        <Paper
-          elevation={3}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-          }}
-        >
+        <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
           <Typography
             variant="h4"
             align="center"
@@ -276,19 +310,39 @@ const StudentEnroll = () => {
             Ingresa tu código de registro
           </Typography>
 
-          <Typography
-            variant="body2"
-            align="center"
-            sx={{ mb: 4, color: "text.secondary" }}
-          >
+          <Typography variant="body2" align="center" sx={{ mb: 4, color: "text.secondary" }}>
             Asegúrate de ingresar el código que tu socio-formador te haya proporcionado.
           </Typography>
 
-          <Box
-            component="form"
-            sx={{ display: "flex", flexDirection: "column", gap: 3 }}
-          >
-            {/* Code Input */}
+          <Box component="form" sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            
+            {/* Video Camera Container - always in DOM so ref works */}
+            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#000', mb: 2, display: cameraActive ? 'block' : 'none' }}>
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: 'auto', display: 'block' }} />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+              <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, border: '3px dashed rgba(255,255,255,0.5)', borderRadius: 2 }} />
+              <Button
+                variant="contained"
+                color="error"
+                onClick={stopCamera}
+                sx={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}
+              >
+                Cancelar Escaneo
+              </Button>
+            </Box>
+
+            {!cameraActive && (
+              <Button
+                variant="outlined"
+                startIcon={<QrCodeScannerIcon />}
+                onClick={startCamera}
+                sx={{ py: 1.5, borderColor: "#2479bd", color: "#2479bd", "&:hover": { borderColor: "#1b5f91", backgroundColor: "#f0f9ff" } }}
+                disabled={validating || validationResult?.success}
+              >
+                Escanear Código QR
+              </Button>
+            )}
+
             <Box sx={{ display: "flex", gap: 1 }}>
               <TextField
                 label="Código de registro"
@@ -303,11 +357,7 @@ const StudentEnroll = () => {
               <Button
                 variant="contained"
                 onClick={validateCode}
-                disabled={
-                  validating ||
-                  !formData.codigo.trim() ||
-                  validationResult?.success
-                }
+                disabled={validating || !formData.codigo.trim() || validationResult?.success}
                 sx={{
                   backgroundColor: "#2479bd",
                   "&:hover": { backgroundColor: "#1b5f91" },
@@ -318,75 +368,26 @@ const StudentEnroll = () => {
               </Button>
             </Box>
 
-            {/* Validation Result */}
             {validationResult && (
               <Alert
-                icon={
-                  validationResult.success ? (
-                    <CheckCircleIcon />
-                  ) : (
-                    <ErrorIcon />
-                  )
-                }
+                icon={validationResult.success ? <CheckCircleIcon /> : <ErrorIcon />}
                 severity={validationResult.success ? "success" : "error"}
               >
                 {validationResult.message}
               </Alert>
             )}
 
-            {/* Project Info */}
             {projectInfo && (
-              <Paper
-                sx={{
-                  p: 2,
-                  backgroundColor: "#f0f9ff",
-                  borderRadius: 2,
-                }}
-              >
+              <Paper sx={{ p: 2, backgroundColor: "#f0f9ff", borderRadius: 2 }}>
                 <Typography variant="h6" gutterBottom>
                   {projectInfo.nombre_proyecto}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  paragraph
-                >
-                  {projectInfo.descripcion}
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  {projectInfo.descripcion || projectInfo.description || "Sin descripción"}
                 </Typography>
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                    >
-                      Duración
-                    </Typography>
-                    <Typography variant="body2">
-                      {projectInfo.duracion}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                    >
-                      Horas Acreditadas
-                    </Typography>
-                    <Typography variant="body2">
-                      {projectInfo.horas_acreditadas} horas
-                    </Typography>
-                  </Box>
-                </Box>
               </Paper>
             )}
 
-            {/* Terms */}
             <FormControlLabel
               control={
                 <Checkbox
@@ -399,7 +400,6 @@ const StudentEnroll = () => {
               label="Acepto las políticas del servicio social"
             />
 
-            {/* Continue */}
             <Button
               variant="contained"
               size="large"

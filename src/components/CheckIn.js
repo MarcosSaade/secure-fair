@@ -59,11 +59,24 @@ const CheckIn = () => {
 
   // Start camera
   const startCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Tu celular bloqueó la cámara. ¡Asegúrate de entrar usando 'https://' en la dirección!");
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+      } catch (errFallback) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -76,6 +89,7 @@ const CheckIn = () => {
       }
     } catch (err) {
       console.error("Camera error:", err);
+      alert(`No se pudo abrir la cámara: ${err.message || "Permiso denegado"}`);
     }
   };
 
@@ -88,7 +102,7 @@ const CheckIn = () => {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     console.log("CheckIn desmontado");
     return () => {
       console.log("Cleanup ejecutado");
@@ -195,77 +209,76 @@ const CheckIn = () => {
   const processQRData = async (data) => {
     console.log("Procesando QR data:", data);
     try {
-      // Parse the JSON from QR
       const qrData = JSON.parse(data);
       console.log("Datos parseados del QR:", qrData);
 
-      // Validate QR data structure
-      if (!qrData.username || !qrData.matricula) {
+      // Support both compact format {m, id, u} and legacy format {matricula, username}
+      const matricula = (qrData.m || qrData.matricula || '').trim().toUpperCase();
+      const username = qrData.u || qrData.username || '';
+
+      if (!matricula) {
         setCheckInResult('error');
-        setErrorMessage('QR inválido: datos incompletos');
+        setErrorMessage('QR inválido: no contiene matrícula');
         setScannedData(null);
         return;
       }
 
-      // Look up students
-     // const currentStudent = JSON.parse(sessionStorage.getItem("studentData"));
-     // const estudiantes = storageService.getEstudiantes();
+      // Look up student from API first (cross-device), fallback to localStorage
+      let estudiante = null;
+      try {
+        const apiBase = `/api`;
+        const res = await fetch(`${apiBase}/auth/student/${encodeURIComponent(matricula)}`);
+        const result = await res.json();
+        if (result.success) estudiante = result.data;
+      } catch (_) { }
 
-      
-     // const estudiante = currentStudent
-    //     && currentStudent.matricula?.trim().toUpperCase() === qrData.matricula?.trim().toUpperCase()
-    //    ? currentStudent 
-     //   : estudiantes.find(s => s.matricula?.trim().toUpperCase() === qrData.matricula?.trim().toUpperCase());
-      const estudiantes = storageService.getEstudiantes();
-      const estudiante = estudiantes.find(s => s.matricula?.trim().toUpperCase() === qrData.matricula?.trim().toUpperCase());
-      console.log("Estudiante encontrado para matrícula:", estudiante);
-      console.log("Estudiantes en storage:", storageService.getEstudiantes());
+      if (!estudiante) {
+        // Fallback to localStorage
+        const estudiantes = storageService.getEstudiantes();
+        estudiante = estudiantes.find(s => s.matricula?.trim().toUpperCase() === matricula);
+      }
 
+      console.log("Estudiante encontrado:", estudiante);
 
       if (!estudiante) {
         setCheckInResult('error');
-        setErrorMessage('Estudiante no registrado');
-        setScannedData(qrData);
+        setErrorMessage('Estudiante no registrado en el sistema');
+        setScannedData({ matricula });
         return;
       }
 
-      // Check if already checked in today
-      const alreadyCheckedIn = await isAlreadyCheckedIn(qrData.matricula);
-
+      const alreadyCheckedIn = await isAlreadyCheckedIn(matricula);
       if (alreadyCheckedIn) {
         setCheckInResult('error');
-        setErrorMessage(`${qrData.nombre} ya fue registrado hoy.`);
-        setScannedData(qrData);
+        setErrorMessage(`${estudiante.nombre || matricula} ya fue registrado hoy.`);
+        setScannedData(estudiante);
         return;
       }
 
-      // Check if time is valid
-      const timeCheck = checkTimeValidity(qrData.hora_registro);
-
+      const timeCheck = checkTimeValidity(estudiante.hora_registro || qrData.hora_registro);
       if (!timeCheck.valid) {
-        // Time NOT valid - DENIED
         setCheckInResult('denied');
         setErrorMessage(timeCheck.message);
-        setScannedData(qrData);
+        setScannedData(estudiante);
         return;
       }
 
-      // Success - create check-in record
       const checkInRecord = {
-        ...qrData,
+        id_usuario: estudiante.id_usuario || estudiante.user_id || qrData.id || qrData.id_usuario,
+        matricula,
+        username: username || estudiante.username,
+        nombre: estudiante.nombre || estudiante.full_name || '',
+        apellidos: estudiante.apellidos || '',
+        hora_registro: estudiante.hora_registro || '',
         timestamp: new Date().toISOString(),
         checkInTime: new Date().toLocaleTimeString('es-ES'),
         checkInDate: new Date().toLocaleDateString('es-ES'),
         status: 'success',
       };
 
-      // Save check-in using service
       await saveCheckIn(checkInRecord);
-
-      // Update state
       const updatedCheckedIn = await getCheckedInStudentsToday();
       setCheckedInStudents(updatedCheckedIn);
-
       setScannedData(estudiante);
       setCheckInResult('success');
       setErrorMessage('');
@@ -285,31 +298,38 @@ const CheckIn = () => {
     }
 
     console.log("Procesando entrada manual para matrícula:", matricula);
+    setErrorMessage('');
 
     try {
-      // Get student data using service
-      const student = await getStudentByMatricula(matricula);
-      console.log(storageService.getEstudiantes())
+      // 1. Try API first (cross-device source of truth)
+      let student = null;
+      try {
+        const apiBase = `/api`;
+        const res = await fetch(`${apiBase}/auth/student/${encodeURIComponent(matricula.trim().toUpperCase())}`);
+        const result = await res.json();
+        if (result.success) student = result.data;
+      } catch (_) { }
+
+      // 2. Fallback to localStorage cache
+      if (!student) {
+        student = await getStudentByMatricula(matricula);
+      }
 
       if (!student) {
-        setErrorMessage('Estudiante no encontrado');
+        setErrorMessage('Estudiante no encontrado. Verifica la matrícula o pide al estudiante que complete su registro.');
         setCheckInResult('error');
         setScannedData(null);
         return;
       }
 
-     // const usuarios = storageService.getUsuarios();
-      //const usuario = usuarios.find(u => u.id_usuario === student.id_usuario);
-     // const studentData = JSON.parse(sessionStorage.getItem("studentData")) || student;
-      const usuario  = JSON.parse(sessionStorage.getItem('user'));
+      const usuario = JSON.parse(sessionStorage.getItem('user'));
 
-      // Create mock QR data from student info
       const mockData = {
-        id_usuario: student.id_usuario,
-        username: usuario?.username,
+        id_usuario: student.id_usuario || student.user_id,
+        username: student.username || usuario?.username,
         matricula: student.matricula,
-        nombre: student.nombre,
-        apellidos: student.apellidos,
+        nombre: student.nombre || student.full_name,
+        apellidos: student.apellidos || '',
         hora_registro: student.hora_registro,
         timestamp: new Date().toISOString(),
       };
@@ -362,7 +382,7 @@ const CheckIn = () => {
       }}
     >
       <Container maxWidth="md">
-   
+
         <Paper
           elevation={10}
           sx={{
@@ -394,58 +414,58 @@ const CheckIn = () => {
                 </Typography>
 
                 {/* Camera View */}
+                <Box
+                  sx={{
+                    position: 'relative',
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    mb: 3,
+                    bgcolor: '#000',
+                  }}
+                >
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    sx={{
+                      width: '100%',
+                      height: 'auto',
+                      display: cameraActive ? 'block' : 'none',
+                    }}
+                    style={{ width: '100%', height: 'auto' }}
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    style={{ display: 'none' }}
+                  />
                   <Box
                     sx={{
-                      position: 'relative',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      border: '3px dashed rgba(255,255,255,0.5)',
                       borderRadius: 2,
-                      overflow: 'hidden',
-                      mb: 3,
-                      bgcolor: '#000',
                     }}
-                  >
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      sx={{
-                        width: '100%',
-                        height: 'auto',
-                        display: cameraActive ? 'block' : 'none',
-                      }}
-                      style={{ width: '100%', height: 'auto' }}
-                    />
-                    <canvas
-                      ref={canvasRef}
-                      style={{ display: 'none' }}
-                    />
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        border: '3px dashed rgba(255,255,255,0.5)',
-                        borderRadius: 2,
-                      }}
-                    />
-                  </Box>
-                 
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    startIcon={<QrCodeIcon />}
-                    onClick={startCamera}
-                    sx={{
-                      py: 2,
-                      mb: 3,
-                      bgcolor: theme.palette.primary.main,
-                    }}
-                  >
-                    Abrir Cámara
-                  </Button>
-                
+                  />
+                </Box>
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={<QrCodeIcon />}
+                  onClick={startCamera}
+                  sx={{
+                    py: 2,
+                    mb: 3,
+                    bgcolor: theme.palette.primary.main,
+                  }}
+                >
+                  Abrir Cámara
+                </Button>
+
 
                 {/* Stop Camera Button */}
                 {cameraActive && (
@@ -538,7 +558,7 @@ const CheckIn = () => {
 
                 {/* Error/Denied Message */}
                 {errorMessage && (
-                  <Alert 
+                  <Alert
                     severity={checkInResult === 'denied' ? 'warning' : 'error'}
                     sx={{ mb: 3 }}
                   >

@@ -80,30 +80,82 @@ const AdminEdit = () => {
 
   
 
-  // Cargar datos de localStorage
-  
+  // Cargar datos desde la API (fuente de la verdad: base de datos)
   useEffect(() => {
     loadData();
-    
-    // Listen for storage updates
-    const handleStudentUpdated = () => {
-      loadData();
-    };
-    
-    window.addEventListener('studentUpdated', handleStudentUpdated);
-    return () => window.removeEventListener('studentUpdated', handleStudentUpdated);
+    window.addEventListener('studentUpdated', loadData);
+    return () => window.removeEventListener('studentUpdated', loadData);
   }, []);
 
-  const loadData = () => {
-    const studsRaw = storageService.getEstudiantes() || [];
-    const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
-    
-    const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
-    const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
+  const loadData = async () => {
+    try {
+      const apiBase = `/api`;
+      const [studsRes, projsRes, orgsRes] = await Promise.all([
+        fetch(`${apiBase}/students`),
+        fetch(`${apiBase}/projects`),
+        fetch(`${apiBase}/organizations`),
+      ]);
+      const [studsData, projsData, orgsData] = await Promise.all([
+        studsRes.json(),
+        projsRes.json(),
+        orgsRes.json(),
+      ]);
 
-    setStudents(studs);
-    setProjects(projs);
-    setOrganizations(orgs);
+      if (studsData.success) {
+        // Normalize student fields for the UI
+        const normalized = studsData.data.map(s => ({
+          ...s,
+          id_usuario: s.user_id ?? s.id_usuario,
+          nombre: s.full_name || s.nombre || '',
+          apellidos: s.apellidos || '',
+          carrera: s.carrera || '',
+          celular: s.phone || s.celular || '',
+          correo: s.correo || s.correo_personal || (s.user?.email) || '',
+          hora_registro: s.hora_registro || '',
+          // Map DB enrollments → UI enrollment format
+          enrollments: (s.enrollments || []).map(e => ({
+            id_proyecto: e.project_id ?? e.id_proyecto,
+            id_organizacion: e.project?.org_id ?? e.id_organizacion,
+            periodo: e.periodo ?? e.fair_period?.name ?? '',
+            period_id: e.period_id,
+            enrollment_id: e.id ?? e.enrollment_id,
+            nombre_proyecto: e.nombre_proyecto ?? e.project?.name ?? '',
+            nombre_osf: e.nombre_osf ?? e.project?.organization?.name ?? '',
+          })),
+        }));
+        setStudents(normalized);
+      }
+
+      if (projsData.success) {
+        const normalizedProjs = projsData.data.map(p => ({
+          ...p,
+          id_proyecto: p.id,
+          id_organizacion: p.org_id,
+          nombre_proyecto: p.name,
+          cupo_estudiantes: p.capacity,
+          inscritos: p.enrollments?.length ?? 0,
+        }));
+        setProjects(normalizedProjs);
+        localStorage.setItem('proyectos', JSON.stringify(normalizedProjs));
+      }
+
+      if (orgsData.success) {
+        const normalizedOrgs = orgsData.data.map(o => ({
+          ...o,
+          id_organizacion: o.id,
+          nombre_osf: o.name,
+        }));
+        setOrganizations(normalizedOrgs);
+        localStorage.setItem('organizaciones', JSON.stringify(normalizedOrgs));
+      }
+    } catch (err) {
+      console.error('Error cargando datos desde API:', err);
+      // Fallback a localStorage
+      const studsRaw = storageService.getEstudiantes() || [];
+      setStudents(Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw));
+      setProjects(JSON.parse(localStorage.getItem('proyectos')) || []);
+      setOrganizations(JSON.parse(localStorage.getItem('organizaciones')) || []);
+    }
   };
 
   // Obtener proyectos de una organización específica
@@ -133,10 +185,11 @@ const AdminEdit = () => {
     const student = students.find(s => s.id_usuario === studentId);
     if (!student) return null;
 
-    const newProject = projects.find(p => p.id_proyecto === newProjectId);
+    const newProject = projects.find(p => Number(p.id_proyecto) === Number(newProjectId));
     if (!newProject) return null;
 
     const newPeriodo = newProject.periodo;
+    if (!newPeriodo) return null;
 
     // Revisar todos los enrollments del estudiante
     if (Array.isArray(student.enrollments)) {
@@ -145,10 +198,11 @@ const AdminEdit = () => {
         if (excludeEnrollmentIndex === i) continue;
 
         const enrollment = student.enrollments[i];
-        const existingProject = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
+        // Use the enrollment's own periodo (source of truth from API/fair_period.name)
+        const enrollmentPeriodo = enrollment.periodo || projects.find(p => Number(p.id_proyecto) === Number(enrollment.id_proyecto))?.periodo;
         
-        if (existingProject && existingProject.periodo === newPeriodo) {
-          return `El alumno no puede ser inscrito en ${newPeriodo} porque ya tiene un proyecto en ese periodo.`;
+        if (enrollmentPeriodo && enrollmentPeriodo === newPeriodo) {
+          return `El alumno no puede ser inscrito en "${newPeriodo}" porque ya tiene un proyecto en ese periodo.`;
         }
       }
     }
@@ -182,9 +236,11 @@ const AdminEdit = () => {
     
     // Si tiene id_proyecto antiguo (backward compatibility)
     if (student.id_proyecto && (!Array.isArray(student.enrollments) || student.enrollments.length === 0)) {
+      const proj = projects.find(p => Number(p.id_proyecto) === Number(student.id_proyecto));
       enrollments.push({
         id_proyecto: student.id_proyecto,
         id_organizacion: student.id_organizacion,
+        periodo: proj?.periodo || null,
         index: 0
       });
     }
@@ -198,7 +254,8 @@ const AdminEdit = () => {
     students.forEach((s) => {
       const allEnrollments = getStudentAllEnrollments(s);
       allEnrollments.forEach((enrollment) => {
-        const periodo = projects.find(p => p.id_proyecto === enrollment.id_proyecto)?.periodo;
+        // Use enrollment.periodo first (source of truth from API), fallback to project lookup
+        const periodo = enrollment.periodo || projects.find(p => Number(p.id_proyecto) === Number(enrollment.id_proyecto))?.periodo;
         if (periodo) {
           periods.add(periodo);
         }
@@ -435,71 +492,70 @@ const AdminEdit = () => {
   };
 
   // Proceder con agregar proyecto
-  const proceedWithAddProject = () => {
-    const updated = students.map((s) => {
-      if (s.id_usuario === editingStudentId) {
-        const updatedStudent = { ...s };
-
-        // Convertir a formato nuevo si es necesario
-        if (!Array.isArray(updatedStudent.enrollments)) {
-          updatedStudent.enrollments = [];
-        }
-
-        // Si tiene id_proyecto antiguo, migrar a nuevo formato
-        if (s.id_proyecto && updatedStudent.enrollments.length === 0) {
-          updatedStudent.enrollments.push({
-            id_proyecto: s.id_proyecto,
-            id_organizacion: s.id_organizacion,
-            periodo: projects.find(p => p.id_proyecto === s.id_proyecto)?.periodo,
-          });
-        }
-
-        // Agregar nuevo proyecto
-        const selectedProject = projects.find(p => p.id_proyecto === Number(formAddProject.id_proyecto));
-        updatedStudent.enrollments.push({
-          id_proyecto: Number(formAddProject.id_proyecto),
-          id_organizacion: Number(formAddProject.id_organizacion),
-          periodo: selectedProject?.periodo,
-        });
-
-        // Limpiar los campos antiguo si ya migró
-       // updatedStudent.id_proyecto = null;
-        // updatedStudent.id_organizacion = null;
-
-        return updatedStudent;
-      }
-      return s;
-    });
-
-    setStudents(updated);
-
-    localStorage.setItem("estudiantes", JSON.stringify(updated));
-    window.dispatchEvent(new Event('studentUpdated'));
-  
-
-      
+  const proceedWithAddProject = async () => {
+    const apiBase = `/api`;
+    const newProjectId = Number(formAddProject.id_proyecto);
     
-   // updated.forEach(student => storageService.saveEstudiante(student));
-
-    // Aumentar inscritos del proyecto
-    updateProjectCapacity(formAddProject.id_proyecto, 1);
-
-   // window.dispatchEvent(new Event('studentUpdated'));
+    try {
+      // Use the project's own period_id (each project belongs to a specific period)
+      const selectedProject = projects.find(p => Number(p.id_proyecto) === newProjectId);
+      let periodId = selectedProject?.period_id;
+      
+      // Fallback: if the project doesn't have period_id locally, let the backend resolve it
+      if (!periodId) {
+        const period = await fetch(`${apiBase}/periods/active`).then(r => r.json()).catch(() => ({ data: { id: 1 } }));
+        periodId = period?.data?.id || 1;
+      }
+      
+      const res = await fetch(`${apiBase}/enrollments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_user_id: editingStudentId,
+          project_id: newProjectId,
+          period_id: periodId,
+        })
+      });
+      const result = await res.json();
+      if (!result.success) {
+        // Show backend error clearly (period conflict, duplicate, etc)
+        setAddProjectError(result.message || 'Error al agregar proyecto');
+        setPeriodConflictMessage("");
+        setCapacityWarningForAdd(false);
+        return;
+      }
+      
+    } catch (err) {
+      console.error("Error adding project:", err);
+      setAddProjectError('Error de conexión al agregar proyecto. Verifica que el backend esté corriendo.');
+      setCapacityWarningForAdd(false);
+      return;
+    }
+    
+    await loadData();
     setOpenAddProject(false);
     setFormAddProject({ id_organizacion: "", id_proyecto: "" });
     setPeriodConflictMessage("");
+    setAddProjectError(null);
     setCapacityWarningForAdd(false);
-    
   };
 
-  // Proceder con guardado
-  const proceedWithSave = () => {
+  // Proceder con guardado — persiste en API + recarga desde DB
+  const proceedWithSave = async () => {
+    const apiBase = `/api`;
+
     if (editingStudentId) {
-      // EDITAR
-      const updated = students.map((s) => {
-        if (s.id_usuario === editingStudentId) {
-          const updatedStudent = {
-            ...s,
+      // === EDITAR ESTUDIANTE EXISTENTE ===
+      const student = students.find(s => s.id_usuario === editingStudentId);
+      const allEnrollments = getStudentAllEnrollments(student);
+
+      // 1. Actualizar perfil del estudiante en DB
+      try {
+        const profileRes = await fetch(`${apiBase}/students/${editingStudentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: `${formStudent.nombre} ${formStudent.apellidos}`.trim(),
             nombre: formStudent.nombre,
             apellidos: formStudent.apellidos,
             matricula: formStudent.matricula,
@@ -507,140 +563,178 @@ const AdminEdit = () => {
             celular: formStudent.celular,
             carrera: formStudent.carrera,
             hora_registro: formStudent.hora_registro,
-          };
+          })
+        });
+        const profileResult = await profileRes.json();
+        if (!profileResult.success) {
+          setErrorMessage(`Error actualizando perfil: ${profileResult.message}`);
+          setOpenCapacityWarning(false);
+          return;
+        }
+      } catch (err) {
+        setErrorMessage('Error de conexión al actualizar el perfil del estudiante.');
+        setOpenCapacityWarning(false);
+        return;
+      }
 
-          const allEnrollments = getStudentAllEnrollments(s);
+      // 2. Si quiere cambiar/agregar proyecto → manejar inscripción en DB
+      if (formStudent.selectedProjectToChange !== "" || (allEnrollments.length === 0 && formStudent.id_proyecto)) {
+        const newProjectId = Number(formStudent.id_proyecto);
+        if (newProjectId) {
+          // Si tiene inscripción existente, actualizar via PUT enrollment
+          const existingEnrollment = allEnrollments[Number(formStudent.selectedProjectToChange)] || allEnrollments[0];
+          const oldProjectId = existingEnrollment?.id_proyecto;
 
-          // Case 1: Student has no enrollments and is adding one
-          if (allEnrollments.length === 0 && formStudent.id_proyecto) {
-            if (!Array.isArray(updatedStudent.enrollments)) {
-              updatedStudent.enrollments = [];
+          if (existingEnrollment?.enrollment_id) {
+            // Actualizar inscripción existente
+            try {
+              const putRes = await fetch(`${apiBase}/enrollments/${existingEnrollment.enrollment_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_id: newProjectId })
+              });
+              const putResult = await putRes.json();
+              if (!putResult.success) {
+                // Mostrar error de conflicto de periodo al usuario
+                setPeriodConflictMessage(putResult.message || 'Error al cambiar el proyecto.');
+                setOpenCapacityWarning(false);
+                setOpenStudent(true);
+                return;
+              }
+            } catch (err) {
+              setErrorMessage('Error de conexión al actualizar la inscripción.');
+              setOpenCapacityWarning(false);
+              return;
             }
+          } else {
+            // Crear inscripción nueva
+            const targetProject = projects.find(p => Number(p.id_proyecto) === newProjectId);
+            let periodId = targetProject?.period_id;
+            if (!periodId) {
+              const period = await fetch(`${apiBase}/periods/active`).then(r => r.json()).catch(() => ({ data: { id: 1 } }));
+              periodId = period?.data?.id || 1;
+            }
+            try {
+              const enrollRes = await fetch(`${apiBase}/enrollments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  student_user_id: editingStudentId,
+                  project_id: newProjectId,
+                  period_id: periodId,
+                })
+              });
+              const enrollResult = await enrollRes.json();
+              if (!enrollResult.success) {
+                setPeriodConflictMessage(enrollResult.message || 'Error al inscribir al estudiante.');
+                setOpenCapacityWarning(false);
+                setOpenStudent(true);
+                return;
+              }
+            } catch (err) {
+              setErrorMessage('Error de conexión al crear la inscripción.');
+              setOpenCapacityWarning(false);
+              return;
+            }
+          }
 
-            const selectedProject = projects.find(p => p.id_proyecto === Number(formStudent.id_proyecto));
-            updatedStudent.enrollments.push({
-              id_proyecto: Number(formStudent.id_proyecto),
-              id_organizacion: Number(formStudent.id_organizacion),
-              periodo: selectedProject?.periodo,
+          if (oldProjectId && oldProjectId !== newProjectId) {
+            updateProjectCapacity(oldProjectId, -1);
+          }
+          updateProjectCapacity(newProjectId, 1);
+        }
+      }
+
+    } else {
+      // === CREAR NUEVO ESTUDIANTE ===
+      try {
+        // Crear usuario primero
+        const userRes = await fetch(`${apiBase}/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formStudent.correo,
+            username: formStudent.matricula.toLowerCase(),
+            password: 'pass1',
+            role: 'student',
+          })
+        });
+        const userResult = await userRes.json();
+
+        if (userResult.success) {
+          const newUserId = userResult.data.id || userResult.data.id_usuario;
+
+          // Crear perfil de estudiante
+          await fetch(`${apiBase}/students/${newUserId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              matricula: formStudent.matricula,
+              full_name: `${formStudent.nombre} ${formStudent.apellidos}`.trim(),
+              nombre: formStudent.nombre,
+              apellidos: formStudent.apellidos,
+              celular: formStudent.celular,
+              correo: formStudent.correo,
+              carrera: formStudent.carrera,
+              hora_registro: formStudent.hora_registro,
+            })
+          });
+
+          // Inscribir en proyecto si seleccionó uno
+          if (formStudent.id_proyecto) {
+            // Use the project's own period_id
+            const targetProject = projects.find(p => Number(p.id_proyecto) === Number(formStudent.id_proyecto));
+            let periodId = targetProject?.period_id;
+            if (!periodId) {
+              const period = await fetch(`${apiBase}/periods/active`).then(r => r.json()).catch(() => ({ data: { id: 1 } }));
+              periodId = period?.data?.id || 1;
+            }
+            await fetch(`${apiBase}/enrollments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                student_user_id: newUserId,
+                project_id: Number(formStudent.id_proyecto),
+                period_id: periodId,
+              })
             });
-
             updateProjectCapacity(formStudent.id_proyecto, 1);
           }
-          // Case 2: Student is changing an existing project
-          else if (formStudent.selectedProjectToChange !== "") {
-            const enrollmentIndexToChange = Number(formStudent.selectedProjectToChange);
-            const oldEnrollment = allEnrollments[enrollmentIndexToChange];
-
-            if (!Array.isArray(updatedStudent.enrollments)) {
-              updatedStudent.enrollments = [];
-            }
-
-            if (s.id_proyecto && updatedStudent.enrollments.length === 0) {
-              updatedStudent.enrollments.push({
-                id_proyecto: s.id_proyecto,
-                id_organizacion: s.id_organizacion,
-                periodo: projects.find(p => p.id_proyecto === s.id_proyecto)?.periodo,
-              });
-            }
-
-            updatedStudent.enrollments = [...updatedStudent.enrollments];
-            const selectedProject = projects.find(p => p.id_proyecto === Number(formStudent.id_proyecto));
-            
-            if (enrollmentIndexToChange < updatedStudent.enrollments.length) {
-              updatedStudent.enrollments[enrollmentIndexToChange] = {
-                id_proyecto: Number(formStudent.id_proyecto),
-                id_organizacion: Number(formStudent.id_organizacion),
-                periodo: selectedProject?.periodo,
-              };
-              
-              if (oldEnrollment.id_proyecto !== Number(formStudent.id_proyecto)) {
-                updateProjectCapacity(oldEnrollment.id_proyecto, -1);
-                updateProjectCapacity(formStudent.id_proyecto, 1);
-              }
-            }
-          }
-
-          return updatedStudent;
         }
-        return s;
-      });
-
-      setStudents(updated);
-      localStorage.setItem("estudiantes", JSON.stringify(updated));
-      window.dispatchEvent(new Event('studentUpdated'));
-
-      console.log("Estudiante actualizado:", updated.find(s => s.id_usuario === editingStudentId));
-    } else {
-      // Crear nuevo
-      const selectedProject = projects.find(p => p.id_proyecto === Number(formStudent.id_proyecto));
-      const newStudent = {
-        id_usuario: Math.random().toString(36).substr(2, 9),
-        username: formStudent.matricula.toLowerCase(),
-        nombre: formStudent.nombre,
-        apellidos: formStudent.apellidos,
-        matricula: formStudent.matricula,
-        correo: formStudent.correo,
-        celular: formStudent.celular,
-        carrera: formStudent.carrera,
-        hora_registro: formStudent.hora_registro,
-        registered_at: new Date().toISOString().split("T")[0],
-        checked_in_at: null,
-        id_proyecto: Number(formStudent.id_proyecto),
-        id_organizacion: Number(formStudent.id_organizacion),
-        enrollments: formStudent.id_proyecto ? [{
-          id_proyecto: Number(formStudent.id_proyecto),
-          id_organizacion: Number(formStudent.id_organizacion),
-          periodo: selectedProject?.periodo,
-        }] : [],
-      };
-      const updated = [...students, newStudent];
-      setStudents(updated);
-      localStorage.setItem("estudiantes", JSON.stringify(updated));
-      window.dispatchEvent(new Event('studentUpdated'));
-
-      if (formStudent.id_proyecto) {
-        updateProjectCapacity(formStudent.id_proyecto, 1);
+      } catch (err) {
+        console.error('Error creando estudiante:', err);
       }
     }
 
+    // Recargar datos desde la API para reflejar cambios reales
+    await loadData();
     setOpenStudent(false);
     setOpenCapacityWarning(false);
     setPeriodConflictMessage("");
   };
 
   // Confirmar eliminación de inscripción
-  const handleConfirmDeleteEnrollment = (student, enrollmentIndex) => {
-    const updated = students.map((s) => {
-      if (s.id_usuario === student.id_usuario) {
-        const updatedStudent = { ...s };
-
-        // Si tiene formato antiguo (id_proyecto único)
-        if (s.id_proyecto && (!Array.isArray(s.enrollments) || s.enrollments.length === 0)) {
-          const oldProjectId = s.id_proyecto;
-          updatedStudent.id_proyecto = null;
-          updatedStudent.id_organizacion = null;
-          
-          // Disminuir inscritos del proyecto
-          updateProjectCapacity(oldProjectId, -1);
-        } else {
-          // Si tiene formato nuevo (enrollments array)
-          const oldEnrollment = s.enrollments[enrollmentIndex];
-          updatedStudent.enrollments = s.enrollments.filter((_, idx) => idx !== enrollmentIndex);
-          
-          // Disminuir inscritos del proyecto
-          updateProjectCapacity(oldEnrollment.id_proyecto, -1);
+  const handleConfirmDeleteEnrollment = async (student, enrollmentIndex) => {
+    const apiBase = `/api`;
+    const oldEnrollment = student.enrollments[enrollmentIndex];
+    const enrollId = oldEnrollment?.enrollment_id || oldEnrollment?.id;
+    
+    if (oldEnrollment && enrollId) {
+      try {
+        const res = await fetch(`${apiBase}/enrollments/${enrollId}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (!result.success) {
+          alert(`Error al eliminar inscripción: ${result.message}`);
         }
-
-        return updatedStudent;
+      } catch (err) {
+        console.error("Error deleting enrollment:", err);
+        alert('Error de conexión al eliminar inscripción');
       }
-      return s;
-    });
-
-    setStudents(updated);
-    localStorage.setItem("estudiantes", JSON.stringify(updated));
-    updated.forEach(st => storageService.saveEstudiante(st));
-
-    window.dispatchEvent(new Event('studentUpdated'));
+    } else {
+      alert('No se encontró el ID de la inscripción. Intenta recargar la página.');
+    }
+    
+    await loadData();
     setOpenDeleteEnrollment(false);
     setStudentToDeleteEnrollment(null);
     setEnrollmentToDeleteIndex(null);
@@ -653,18 +747,22 @@ const AdminEdit = () => {
   };
 
   // Confirmar eliminación de estudiante
-  const handleConfirmDeleteStudent = () => {
+  const handleConfirmDeleteStudent = async () => {
+    const apiBase = `/api`;
     if (studentToDeleteCompletely) {
-      const updated = students.filter((s) => s.id_usuario !== studentToDeleteCompletely.id_usuario);
-      setStudents(updated);
-      localStorage.setItem("estudiantes", JSON.stringify(updated));
-      updated.forEach(student => storageService.saveEstudiante(student));
-
-      // Disminuir inscritos del proyecto
-      updateProjectCapacity(studentToDeleteCompletely.id_proyecto, -1);
-
-      window.dispatchEvent(new Event('studentUpdated'));
-      console.log("Estudiante eliminado:", studentToDeleteCompletely.nombre);
+      try {
+        const res = await fetch(`${apiBase}/users/${studentToDeleteCompletely.id_usuario}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (!result.success) {
+          alert(`Error al eliminar estudiante: ${result.message}`);
+        } else {
+          console.log("Estudiante eliminado:", studentToDeleteCompletely.nombre);
+        }
+      } catch (err) {
+        console.error("Error deleting student:", err);
+        alert('Error de conexión al eliminar estudiante');
+      }
+      await loadData();
     }
     setOpenDeleteStudent(false);
     setStudentToDeleteCompletely(null);
@@ -705,7 +803,7 @@ const AdminEdit = () => {
       if (filterPeriod) {
         const allEnrollments = getStudentAllEnrollments(s);
         return allEnrollments.some((enrollment) => {
-          const periodo = projects.find(p => p.id_proyecto === enrollment.id_proyecto)?.periodo;
+          const periodo = enrollment.periodo || projects.find(p => Number(p.id_proyecto) === Number(enrollment.id_proyecto))?.periodo;
           return periodo === filterPeriod;
         });
       }
@@ -777,7 +875,7 @@ const AdminEdit = () => {
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">Todas las organizaciones</MenuItem>
-            {organizations.map((o) => (
+            {[...organizations].sort((a, b) => (a.nombre_osf || '').localeCompare(b.nombre_osf || '', 'es')).map((o) => (
               <MenuItem key={o.id_organizacion} value={o.id_organizacion}>
                 {o.nombre_osf}
               </MenuItem>
@@ -791,7 +889,7 @@ const AdminEdit = () => {
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">Todos los proyectos</MenuItem>
-            {projects.map((p) => {
+            {[...projects].sort((a, b) => (a.nombre_proyecto || '').localeCompare(b.nombre_proyecto || '', 'es')).map((p) => {
               const availableSlots = getAvailableSlots(p.id_proyecto);
               const isFull = availableSlots === 0;
               return (
@@ -886,7 +984,7 @@ const AdminEdit = () => {
                                 {proj.nombre_proyecto}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {proj.org?.nombre_osf} • {proj.enrollment.periodo || proj.periodo || "N/A"}
+                                {proj.org?.nombre_osf} • {proj.enrollment?.periodo || proj.periodo || "N/A"}
                               </Typography>
                             </Box>
                           </Box>
@@ -1007,7 +1105,7 @@ const AdminEdit = () => {
                   const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
                   return (
                     <MenuItem key={idx} value={idx}>
-                      {project?.nombre_proyecto} - {enrollment.periodo}
+                      {project?.nombre_proyecto || enrollment.nombre_proyecto || 'Proyecto'} - {enrollment.periodo || project?.periodo || 'Sin periodo'}
                     </MenuItem>
                   );
                 })}
@@ -1041,7 +1139,7 @@ const AdminEdit = () => {
                     displayEmpty
                   >
                     <MenuItem value="">Selecciona una organización</MenuItem>
-                    {organizations.map((o) => (
+                    {[...organizations].sort((a, b) => (a.nombre_osf || '').localeCompare(b.nombre_osf || '', 'es')).map((o) => (
                       <MenuItem key={o.id_organizacion} value={o.id_organizacion}>
                         {o.nombre_osf}
                       </MenuItem>
@@ -1061,7 +1159,7 @@ const AdminEdit = () => {
                       {formStudent.id_organizacion ? "Selecciona un proyecto" : "Primero selecciona una organización"}
                     </MenuItem>
                     {formStudent.id_organizacion &&
-                      getProjectsByOrg(formStudent.id_organizacion).map((p) => {
+                      [...getProjectsByOrg(formStudent.id_organizacion)].sort((a, b) => (a.nombre_proyecto || '').localeCompare(b.nombre_proyecto || '', 'es')).map((p) => {
                         const availableSlots = getAvailableSlots(p.id_proyecto);
                         const isFull = availableSlots === 0;
                         return (
@@ -1115,7 +1213,7 @@ const AdminEdit = () => {
                 displayEmpty
               >
                 <MenuItem value="">Selecciona una organización</MenuItem>
-                {organizations.map((o) => (
+                {[...organizations].sort((a, b) => (a.nombre_osf || '').localeCompare(b.nombre_osf || '', 'es')).map((o) => (
                   <MenuItem key={o.id_organizacion} value={o.id_organizacion}>
                     {o.nombre_osf}
                   </MenuItem>
@@ -1132,7 +1230,7 @@ const AdminEdit = () => {
                   {formStudent.id_organizacion ? "Selecciona un proyecto" : "Primero selecciona una organización"}
                 </MenuItem>
                 {formStudent.id_organizacion &&
-                  getProjectsByOrg(formStudent.id_organizacion).map((p) => {
+                  [...getProjectsByOrg(formStudent.id_organizacion)].sort((a, b) => (a.nombre_proyecto || '').localeCompare(b.nombre_proyecto || '', 'es')).map((p) => {
                     const availableSlots = getAvailableSlots(p.id_proyecto);
                     const isFull = availableSlots === 0;
                     return (
@@ -1164,7 +1262,7 @@ const AdminEdit = () => {
                 displayEmpty
               >
                 <MenuItem value="">Selecciona una organización</MenuItem>
-                {organizations.map((o) => (
+                {[...organizations].sort((a, b) => (a.nombre_osf || '').localeCompare(b.nombre_osf || '', 'es')).map((o) => (
                   <MenuItem key={o.id_organizacion} value={o.id_organizacion}>
                     {o.nombre_osf}
                   </MenuItem>
@@ -1181,7 +1279,7 @@ const AdminEdit = () => {
                   {formStudent.id_organizacion ? "Selecciona un proyecto" : "Primero selecciona una organización"}
                 </MenuItem>
                 {formStudent.id_organizacion &&
-                  getProjectsByOrg(formStudent.id_organizacion).map((p) => {
+                  [...getProjectsByOrg(formStudent.id_organizacion)].sort((a, b) => (a.nombre_proyecto || '').localeCompare(b.nombre_proyecto || '', 'es')).map((p) => {
                     const availableSlots = getAvailableSlots(p.id_proyecto);
                     const isFull = availableSlots === 0;
                     return (
@@ -1245,7 +1343,7 @@ const AdminEdit = () => {
             displayEmpty
           >
             <MenuItem value="">Selecciona una organización</MenuItem>
-            {organizations.map((o) => (
+            {[...organizations].sort((a, b) => (a.nombre_osf || '').localeCompare(b.nombre_osf || '', 'es')).map((o) => (
               <MenuItem key={o.id_organizacion} value={o.id_organizacion}>
                 {o.nombre_osf}
               </MenuItem>
@@ -1266,7 +1364,7 @@ const AdminEdit = () => {
               {formAddProject.id_organizacion ? "Selecciona un proyecto" : "Primero selecciona una organización"}
             </MenuItem>
             {formAddProject.id_organizacion &&
-              getProjectsByOrg(formAddProject.id_organizacion).map((p) => {
+              [...getProjectsByOrg(formAddProject.id_organizacion)].sort((a, b) => (a.nombre_proyecto || '').localeCompare(b.nombre_proyecto || '', 'es')).map((p) => {
                 const availableSlots = getAvailableSlots(p.id_proyecto);
                 const isFull = availableSlots === 0;
                 return (
@@ -1377,7 +1475,7 @@ const AdminEdit = () => {
               const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
               return (
                 <MenuItem key={idx} value={idx}>
-                  {project?.nombre_proyecto} - {enrollment.periodo}
+                  {project?.nombre_proyecto || enrollment.nombre_proyecto || 'Proyecto'} - {enrollment.periodo || project?.periodo || 'Sin periodo'}
                 </MenuItem>
               );
             })}

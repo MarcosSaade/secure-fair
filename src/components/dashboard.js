@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { Bar, Doughnut, Pie } from "react-chartjs-2";
+import { Bar, Doughnut } from "react-chartjs-2";
 import * as storageService from "../services/StorageService";
 
 ChartJS.register(
@@ -39,20 +39,84 @@ const CHART_COLORS = [
   PALETTE.blueLight,
 ];
 
-const NEUTRAL = "#babab7";
+// ─── Helpers ───────────────────────────────────────────────────
 
-// ─── Opciones base Bar ─────────────────────────────────────────
+/**
+ * Convierte un nombre largo en siglas/abreviatura para ejes de gráficas.
+ * Ej: "1. Participar en una sesión de inducción..." → "Participar en una ses…"
+ * Muestra hasta `maxChars` caracteres (sin el número inicial si lo tiene).
+ */
+const abbreviateLabel = (name, maxChars = 5) => {
+  // Quitar prefijo tipo "1. " o "1) "
+  const clean = name.replace(/^\d+[)]\s*/, "").trim();
+  if (clean.length <= maxChars) return clean;
+  return clean.slice(0, maxChars) + "…";
+};
+
+// ─── Callback de tooltip que muestra el nombre completo ────────
+// Divide el texto en líneas de máx 40 chars para que el tooltip no lo corte
+const wrapText = (text, maxLen = 40) => {
+  const words = text.split(" ");
+  const lines = [];
+  let current = "";
+  words.forEach((word) => {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxLen) {
+      if (current) lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+  if (current) lines.push(current);
+  return lines;
+};
+
+const fullLabelTitleCallback = (items) => {
+  if (!items.length) return [];
+  const { dataIndex, dataset } = items[0];
+  // fullLabels se guarda dentro del dataset (no en chart.data)
+  const full = dataset?.fullLabels?.[dataIndex] ?? items[0].label ?? "";
+  return wrapText(full);
+};
+
+// Devuelve el color de la barra/segmento activo para el fondo del tooltip
+// Lee el color del elemento activo desde context.tooltip.dataPoints
+const getActiveColor = (context) => {
+  try {
+    const dp = context?.tooltip?.dataPoints?.[0];
+    if (!dp) return PALETTE.navy;
+    const { dataset, dataIndex } = dp;
+    const bg = dataset?.backgroundColor;
+    if (Array.isArray(bg)) return bg[dataIndex] ?? PALETTE.navy;
+    return bg ?? PALETTE.navy;
+  } catch {
+    return PALETTE.navy;
+  }
+};
+
+// Opciones de tooltip dinámicas (color igual al elemento hover)
+const dynamicTooltip = {
+  backgroundColor: (context) => getActiveColor(context),
+  titleColor: "#fff",
+  bodyColor: "rgba(255,255,255,0.85)",
+  padding: 10,
+  cornerRadius: 4,
+  displayColors: false,
+  callbacks: {
+    labelColor: (context) => {
+      const color = getActiveColor(context);
+      return { borderColor: color, backgroundColor: color };
+    },
+  },
+};
+
+// ─── Opciones base Bar vertical ────────────────────────────────
 const barBaseOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
-    tooltip: {
-      backgroundColor: PALETTE.navy,
-      titleColor: "#fff",
-      bodyColor: "#cde0f0",
-      padding: 10,
-      cornerRadius: 4,
-    },
+    tooltip: dynamicTooltip,
   },
   scales: {
     x: {
@@ -61,7 +125,7 @@ const barBaseOptions = {
       ticks: {
         color: "#888780",
         font: { size: 11 },
-        maxRotation: 30,
+        maxRotation: 0,
         autoSkip: false,
       },
     },
@@ -73,18 +137,54 @@ const barBaseOptions = {
   },
 };
 
-// ─── Opciones base Doughnut / Pie ──────────────────────────────
+// Opciones bar vertical con tooltip de nombre completo + color dinámico
+const barOptionsWithFullLabel = {
+  ...barBaseOptions,
+  plugins: {
+    ...barBaseOptions.plugins,
+    tooltip: {
+      ...dynamicTooltip,
+      callbacks: {
+        ...dynamicTooltip.callbacks,
+        title: fullLabelTitleCallback,
+      },
+    },
+  },
+};
+
+// ─── Opciones Bar horizontal (para organizaciones) ─────────────
+const barHorizontalOptions = {
+  indexAxis: "y",
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: dynamicTooltip,
+  },
+  scales: {
+    x: {
+      grid: { color: "rgba(0,0,0,0.06)", drawBorder: false },
+      border: { display: false },
+      ticks: { color: "#888780", font: { size: 11 } },
+      beginAtZero: true,
+    },
+    y: {
+      grid: { display: false },
+      border: { display: false },
+      ticks: {
+        color: "#888780",
+        font: { size: 11 },
+        // Las etiquetas ya vienen abreviadas desde el dataset
+      },
+    },
+  },
+};
+
+// ─── Opciones base Doughnut ────────────────────────────────────
 const arcBaseOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
-    tooltip: {
-      backgroundColor: PALETTE.navy,
-      titleColor: "#fff",
-      bodyColor: "#cde0f0",
-      padding: 10,
-      cornerRadius: 4,
-    },
+    tooltip: dynamicTooltip,
   },
 };
 
@@ -185,7 +285,6 @@ const ChartCard = ({ title, legend, children }) => (
 
     {legend && <ChartLegend items={legend} />}
 
-    {/* Altura fija para el canvas — todas las cards tienen la misma */}
     <Box sx={{ position: "relative", height: 240 }}>
       {children}
     </Box>
@@ -201,26 +300,59 @@ const AdminDashboardPanel = ({
   selectedPeriod,
 }) => {
 
-  // ── Estudiantes desde storage ────────────────────────────────
+  // ── Estudiantes desde API (fuente de la verdad) ─────────────
   const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    const loadStudents = () => {
-      const data = storageService.getEstudiantes() || [];
-      setStudents(data);
+    const loadStudents = async () => {
+      try {
+        const apiBase = `/api`;
+        const res = await fetch(`${apiBase}/students`);
+        const data = await res.json();
+        if (data.success) {
+          // Normalize: map DB fields to UI field names
+          const normalized = data.data.map(s => ({
+            ...s,
+            id_usuario: s.user_id ?? s.id_usuario,
+            nombre: s.full_name || s.nombre || '',
+            apellidos: s.apellidos || '',
+            carrera: s.carrera || '',
+            celular: s.phone || s.celular || '',
+            hora_registro: s.hora_registro || '',
+            correo: s.correo || '',
+            // enrollments already mapped by the API route
+            enrollments: (s.enrollments || []).map(e => ({
+              id_proyecto: e.project_id ?? e.id_proyecto,
+              id_organizacion: e.project?.org_id ?? e.id_organizacion,
+              periodo: e.periodo ?? e.fair_period?.name ?? null,
+              period_id: e.period_id,
+              enrollment_id: e.id ?? e.enrollment_id,
+            }))
+          }));
+          setStudents(normalized);
+        } else {
+          // Fallback localStorage
+          const data2 = storageService.getEstudiantes() || [];
+          setStudents(data2);
+        }
+      } catch (err) {
+        console.warn('Dashboard: API no disponible, usando localStorage');
+        const data2 = storageService.getEstudiantes() || [];
+        setStudents(data2);
+      }
     };
     loadStudents();
-    window.addEventListener("storageUpdated", loadStudents);
-    return () => window.removeEventListener("storageUpdated", loadStudents);
+    window.addEventListener('studentUpdated', loadStudents);
+    return () => window.removeEventListener('studentUpdated', loadStudents);
   }, []);
 
-  // ── Estudiantes filtrados ────────────────────────────────────
+  // ── Estudiantes filtrados ─────────────────────────────────────
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
       if (selectedOrg) {
         if (Array.isArray(s.enrollments)) {
           const hasOrg = s.enrollments.some(
-            (e) => Number(e.id_organizacion) === Number(selectedOrg)
+            (e) => Number(e.id_organizacion ?? e.project?.org_id) === Number(selectedOrg)
           );
           if (!hasOrg) return false;
         } else if (Number(s.id_organizacion) !== Number(selectedOrg)) {
@@ -231,7 +363,7 @@ const AdminDashboardPanel = ({
       if (selectedProject) {
         if (Array.isArray(s.enrollments)) {
           const hasProject = s.enrollments.some(
-            (e) => Number(e.id_proyecto) === Number(selectedProject)
+            (e) => Number(e.id_proyecto ?? e.project_id) === Number(selectedProject)
           );
           if (!hasProject) return false;
         } else if (Number(s.id_proyecto) !== Number(selectedProject)) {
@@ -240,19 +372,23 @@ const AdminDashboardPanel = ({
       }
 
       if (selectedPeriod) {
-        const matchesPeriod = (projId) => {
-          const project = projects.find(
-            (p) => Number(p.id_proyecto) === Number(projId)
-          );
-          return project?.periodo === selectedPeriod;
-        };
+        // selectedPeriod is now a period name string (e.g. "Invierno", "Verano")
         if (Array.isArray(s.enrollments)) {
-          const hasPeriod = s.enrollments.some((e) =>
-            matchesPeriod(e.id_proyecto)
-          );
+          const hasPeriod = s.enrollments.some((e) => {
+            // Match by periodo string stored in enrollment
+            if (e.periodo) return e.periodo === selectedPeriod;
+            // Fallback: match via project's periodo
+            const project = projects.find(
+              (p) => Number(p.id_proyecto ?? p.id) === Number(e.id_proyecto ?? e.project_id)
+            );
+            return (project?.periodo) === selectedPeriod;
+          });
           if (!hasPeriod) return false;
         } else {
-          if (!matchesPeriod(s.id_proyecto)) return false;
+          const project = projects.find(
+            (p) => Number(p.id_proyecto ?? p.id) === Number(s.id_proyecto)
+          );
+          if ((project?.periodo) !== selectedPeriod) return false;
         }
       }
 
@@ -260,23 +396,24 @@ const AdminDashboardPanel = ({
     });
   }, [students, projects, selectedOrg, selectedProject, selectedPeriod]);
 
-  // ── Inscritos por proyecto ───────────────────────────────────
+  // ── Inscritos por proyecto ────────────────────────────────────
   const projectEnrollmentCounts = useMemo(() => {
     return projects.map((proj) => {
+      const projId = proj.id_proyecto ?? proj.id;
       const count = filteredStudents.filter((s) => {
         if (Array.isArray(s.enrollments)) {
           return s.enrollments.some(
-            (e) => Number(e.id_proyecto) === Number(proj.id_proyecto)
+            (e) => Number(e.id_proyecto ?? e.project_id) === Number(projId)
           );
         }
-        return Number(s.id_proyecto) === Number(proj.id_proyecto);
+        return Number(s.id_proyecto) === Number(projId);
       }).length;
 
       return {
-        nombre: proj.nombre_proyecto,
+        nombre: proj.nombre_proyecto || proj.name || `Proyecto ${projId}`,
         inscritos: count,
-        cupo: Number(proj.cupo_estudiantes),
-        id: proj.id_proyecto,
+        cupo: Number(proj.cupo_estudiantes ?? proj.capacity ?? 0),
+        id: projId,
       };
     });
   }, [filteredStudents, projects]);
@@ -300,17 +437,18 @@ const AdminDashboardPanel = ({
     };
   }, [filteredStudents, projectEnrollmentCounts]);
 
-  // ── Top 5 más inscritos ──────────────────────────────────────
+  // ── Top 5 proyectos con más inscritos ────────────────────────
   const top5Most = useMemo(() => {
     const sorted = [...projectEnrollmentCounts]
       .sort((a, b) => b.inscritos - a.inscritos)
       .slice(0, 5);
     return {
-      labels: sorted.map((p) => p.nombre),
+      labels: sorted.map((p) => abbreviateLabel(p.nombre)),
       datasets: [
         {
           label: "Inscritos",
           data: sorted.map((p) => p.inscritos),
+          fullLabels: sorted.map((p) => p.nombre),
           backgroundColor: PALETTE.navy,
           borderRadius: 0,
           borderSkipped: false,
@@ -319,17 +457,19 @@ const AdminDashboardPanel = ({
     };
   }, [projectEnrollmentCounts]);
 
-  // ── Top 5 menos inscritos ────────────────────────────────────
+  // ── Top 5 proyectos con menos inscritos ──────────────────────
   const top5Least = useMemo(() => {
     const sorted = [...projectEnrollmentCounts]
+      .filter(p => p.inscritos > 0)
       .sort((a, b) => a.inscritos - b.inscritos)
       .slice(0, 5);
     return {
-      labels: sorted.map((p) => p.nombre),
+      labels: sorted.map((p) => abbreviateLabel(p.nombre)),
       datasets: [
         {
           label: "Inscritos",
           data: sorted.map((p) => p.inscritos),
+          fullLabels: sorted.map((p) => p.nombre),
           backgroundColor: PALETTE.orange,
           borderRadius: 0,
           borderSkipped: false,
@@ -339,10 +479,7 @@ const AdminDashboardPanel = ({
   }, [projectEnrollmentCounts]);
 
   // ── Cupos disponibles ────────────────────────────────────────
-  
   const capacityData = useMemo(() => {
-
-    // 1️⃣ Determinar qué proyectos entran en el cálculo según filtros
     let relevantProjects = projects;
 
     if (selectedProject) {
@@ -355,7 +492,6 @@ const AdminDashboardPanel = ({
           (p) => Number(p.id_organizacion) === Number(selectedOrg)
         );
       }
-
       if (selectedPeriod) {
         relevantProjects = relevantProjects.filter(
           (p) => p.periodo === selectedPeriod
@@ -363,23 +499,20 @@ const AdminDashboardPanel = ({
       }
     }
 
-    // 2️⃣ Calcular cupo total SOLO de esos proyectos
     const totalCapacity = relevantProjects.reduce(
       (acc, p) => acc + Number(p.cupo_estudiantes || 0),
       0
     );
 
-    // 3️⃣ Calcular inscritos SOLO en esos proyectos
     const totalInscritos = relevantProjects.reduce((acc, proj) => {
       const count = filteredStudents.filter((s) => {
         if (Array.isArray(s.enrollments)) {
           return s.enrollments.some(
-            (e) => Number(e.id_proyecto) === Number(proj.id_proyecto)
+            (e) => Number(e.id_proyecto || e.project_id) === Number(proj.id_proyecto || proj.id)
           );
         }
-        return Number(s.id_proyecto) === Number(proj.id_proyecto);
+        return Number(s.id_proyecto) === Number(proj.id_proyecto || proj.id);
       }).length;
-
       return acc + count;
     }, 0);
 
@@ -397,62 +530,102 @@ const AdminDashboardPanel = ({
         },
       ],
     };
+  }, [projects, filteredStudents, selectedProject, selectedOrg, selectedPeriod]);
 
-  }, [
-    projects,
-    filteredStudents,
-    selectedProject,
-    selectedOrg,
-    selectedPeriod,
-  ]);
-
-  // ── Distribución por organización ────────────────────────────
-  const organizationDistribution = useMemo(() => {
+  // ── Inscritos por organización (mapa id → count) ─────────────
+  const orgEnrollmentMap = useMemo(() => {
     const orgMap = {};
     filteredStudents.forEach((s) => {
       if (Array.isArray(s.enrollments)) {
         s.enrollments.forEach((e) => {
-          orgMap[e.id_organizacion] = (orgMap[e.id_organizacion] || 0) + 1;
+          const orgId = e.id_organizacion || e.project?.org_id;
+          if (orgId !== undefined && orgId !== null) {
+            orgMap[orgId] = (orgMap[orgId] || 0) + 1;
+          }
         });
       } else if (s.id_organizacion) {
         orgMap[s.id_organizacion] = (orgMap[s.id_organizacion] || 0) + 1;
       }
     });
-    const labels = Object.keys(orgMap).map((id) => {
-      const org = organizations.find(
-        (o) => Number(o.id_organizacion) === Number(id)
-      );
-      return org ? org.nombre_osf : `Org ${id}`;
-    });
+    return orgMap;
+  }, [filteredStudents]);
+
+  // ── Top 5 organizaciones con MÁS inscritos (barras horiz.) ───
+  const top5OrgsMore = useMemo(() => {
+    const entries = Object.entries(orgEnrollmentMap)
+      .map(([id, count]) => {
+        const org = organizations.find(
+          (o) => Number(o.id_organizacion || o.id) === Number(id)
+        );
+        return { nombre: org ? (org.nombre_osf || org.name) : `Org ${id}`, count };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return {
-      labels,
+      labels: entries.map((e) => abbreviateLabel(e.nombre, 5)),
       datasets: [
         {
-          data: Object.values(orgMap),
-          backgroundColor: CHART_COLORS,
-          borderWidth: 0,
-          hoverOffset: 4,
+          label: "Inscritos",
+          data: entries.map((e) => e.count),
+          fullLabels: entries.map((e) => e.nombre),
+          backgroundColor: CHART_COLORS.slice(0, entries.length),
+          borderRadius: 0,
+          borderSkipped: false,
         },
       ],
-      total: filteredStudents.length,
     };
-  }, [filteredStudents, organizations]);
+  }, [orgEnrollmentMap, organizations]);
+
+  // ── Top 5 organizaciones con MENOS inscritos (barras horiz.) ─
+  const top5OrgsLess = useMemo(() => {
+    const entries = Object.entries(orgEnrollmentMap)
+      .map(([id, count]) => {
+        const org = organizations.find(
+          (o) => Number(o.id_organizacion || o.id) === Number(id)
+        );
+        return { nombre: org ? (org.nombre_osf || org.name) : `Org ${id}`, count };
+      })
+      .sort((a, b) => a.count - b.count)
+      .slice(0, 5);
+
+    return {
+      labels: entries.map((e) => abbreviateLabel(e.nombre, 5)),
+      datasets: [
+        {
+          label: "Inscritos",
+          data: entries.map((e) => e.count),
+          fullLabels: entries.map((e) => e.nombre),
+          backgroundColor: [
+            PALETTE.orange,
+            PALETTE.purple,
+            PALETTE.blueLight,
+            "#f4a843",
+            "#c94a6a",
+          ].slice(0, entries.length),
+          borderRadius: 0,
+          borderSkipped: false,
+        },
+      ],
+    };
+  }, [orgEnrollmentMap, organizations]);
 
   // ── Inscritos por periodo ────────────────────────────────────
   const enrollmentByPeriod = useMemo(() => {
     const periodMap = {};
     filteredStudents.forEach((s) => {
-      const countPeriod = (projId) => {
-        const project = projects.find(
-          (p) => Number(p.id_proyecto) === Number(projId)
-        );
-        const periodo = project?.periodo || "Sin periodo";
-        periodMap[periodo] = (periodMap[periodo] || 0) + 1;
-      };
       if (Array.isArray(s.enrollments)) {
-        s.enrollments.forEach((e) => countPeriod(e.id_proyecto));
+        s.enrollments.forEach((e) => {
+          // Use the periodo string directly from enrollment (populated from fair_period.name)
+          const periodo = e.periodo || null;
+          if (periodo) periodMap[periodo] = (periodMap[periodo] || 0) + 1;
+        });
       } else if (s.id_proyecto) {
-        countPeriod(s.id_proyecto);
+        const project = projects.find(
+          (p) => Number(p.id_proyecto || p.id) === Number(s.id_proyecto)
+        );
+        const periodo = project?.periodo || 'Sin periodo';
+        periodMap[periodo] = (periodMap[periodo] || 0) + 1;
       }
     });
     const entries = Object.entries(periodMap);
@@ -472,38 +645,20 @@ const AdminDashboardPanel = ({
     };
   }, [filteredStudents, projects]);
 
-  // ── Conversión ───────────────────────────────────────────────
-  const conversionData = useMemo(() => {
-    const inscritos = kpis.inscritos;
-    const noInscritos = kpis.total - inscritos;
-    return {
-      labels: ["Inscritos", "Sin inscribir"],
-      datasets: [
-        {
-          data: [inscritos, noInscritos],
-          backgroundColor: [PALETTE.green, NEUTRAL],
-          borderWidth: 0,
-          hoverOffset: 4,
-        },
-      ],
-      total: kpis.total,
-    };
-  }, [kpis]);
-
-  // ── Leyendas dinámicas ───────────────────────────────────────
-  const orgLegendItems = useMemo(() => {
-    return (organizationDistribution.labels || []).map((label, i) => ({
-      color: CHART_COLORS[i % CHART_COLORS.length],
-      label: `${label} (${organizationDistribution.datasets[0].data[i]})`,
-    }));
-  }, [organizationDistribution]);
-
-  const periodLegendItems = useMemo(() => {
-    return (enrollmentByPeriod.labels || []).map((label, i) => ({
-      color: CHART_COLORS[i % CHART_COLORS.length],
-      label,
-    }));
-  }, [enrollmentByPeriod]);
+// Opciones bar horizontal con tooltip de nombre completo + color dinámico
+const barHorizWithFullLabel = {
+  ...barHorizontalOptions,
+  plugins: {
+    ...barHorizontalOptions.plugins,
+    tooltip: {
+      ...dynamicTooltip,
+      callbacks: {
+        ...dynamicTooltip.callbacks,
+        title: fullLabelTitleCallback,
+      },
+    },
+  },
+};
 
   // ── Render ───────────────────────────────────────────────────
   return (
@@ -518,7 +673,7 @@ const AdminDashboardPanel = ({
         Dashboard Feria de Servicio Social
       </Typography>
 
-      {/* ── KPIs — CSS Grid 4 columnas ─────────────────────── */}
+      {/* ── KPIs ────────────────────────────────────────────── */}
       <Box
         sx={{
           display: "grid",
@@ -545,12 +700,11 @@ const AdminDashboardPanel = ({
         />
         <KpiCard
           label="Proyecto con más demanda"
-          value={kpis.topProject}
-          sub="mayor número de inscritos"
+          value={kpis.topProject !== "N/A" ? kpis.topProject : ""}
         />
       </Box>
 
-      {/* ── Gráficas — CSS Grid 3 columnas ─────────────────── */}
+      {/* ── Gráficas — 3 columnas ────────────────────────────── */}
       <Box
         sx={{
           display: "grid",
@@ -558,20 +712,20 @@ const AdminDashboardPanel = ({
           gap: 3,
         }}
       >
-        {/* Top 5 más inscritos */}
+        {/* Top 5 organizaciones con más inscritos */}
         <ChartCard
-          title="Top 5 Proyectos con más inscritos"
+          title="Top 5 Organizaciones con más inscritos"
           legend={[{ color: PALETTE.navy, label: "Inscritos" }]}
         >
-          <Bar data={top5Most} options={barBaseOptions} />
+          <Bar data={top5OrgsMore} options={barHorizWithFullLabel} />
         </ChartCard>
 
-        {/* Top 5 menos inscritos */}
+        {/* Top 5 organizaciones con menos inscritos */}
         <ChartCard
-          title="Top 5 Proyectos con menos inscritos"
+          title="Top 5 Organizaciones con menos inscritos"
           legend={[{ color: PALETTE.orange, label: "Inscritos" }]}
         >
-          <Bar data={top5Least} options={barBaseOptions} />
+          <Bar data={top5OrgsLess} options={barHorizWithFullLabel} />
         </ChartCard>
 
         {/* Cupos disponibles */}
@@ -590,41 +744,31 @@ const AdminDashboardPanel = ({
           )}
         </ChartCard>
 
-        {/* Distribución por organización */}
+        {/* Top 5 proyectos con más inscritos */}
         <ChartCard
-          title="Distribución por organización"
-          legend={orgLegendItems}
+          title="Top 5 Proyectos con más inscritos"
+          legend={[{ color: PALETTE.navy, label: "Inscritos" }]}
         >
-          <Pie data={organizationDistribution} options={arcBaseOptions} />
+          <Bar data={top5Most} options={barOptionsWithFullLabel} />
+        </ChartCard>
+
+        {/* Top 5 proyectos con menos inscritos */}
+        <ChartCard
+          title="Top 5 Proyectos con menos inscritos"
+          legend={[{ color: PALETTE.orange, label: "Inscritos" }]}
+        >
+          <Bar data={top5Least} options={barOptionsWithFullLabel} />
         </ChartCard>
 
         {/* Inscritos por periodo */}
         <ChartCard
           title="Inscritos por periodo"
-          legend={periodLegendItems}
+          legend={(enrollmentByPeriod.labels || []).map((label, i) => ({
+            color: CHART_COLORS[i % CHART_COLORS.length],
+            label,
+          }))}
         >
           <Bar data={enrollmentByPeriod} options={barBaseOptions} />
-        </ChartCard>
-
-        {/* Alumnos sin inscripción */}
-        <ChartCard
-          title="Alumnos sin inscripción"
-          legend={[
-            { color: PALETTE.green, label: `Inscritos ${kpis.conversion}%` },
-            {
-              color: NEUTRAL,
-              label: `Sin inscribir ${
-                kpis.total
-                  ? (100 - parseFloat(kpis.conversion)).toFixed(1)
-                  : 0
-              }%`,
-            },
-          ]}
-        >
-          <Doughnut
-            data={conversionData}
-            options={{ ...arcBaseOptions, cutout: "70%" }}
-          />
         </ChartCard>
       </Box>
     </Box>

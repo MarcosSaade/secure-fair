@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Typography, TextField, MenuItem, Button, useTheme } from "@mui/material";
+import { Box, Typography, TextField, MenuItem, Button, useTheme, CircularProgress } from "@mui/material";
 //import { projects } from "../projects";
-import { organizations } from "../organization";
+//import { organizations } from "../organization";
 import ProjectsTable from "../../components/ProjectsTable";
 
 const StudentSlots = () => {
@@ -10,40 +10,70 @@ const StudentSlots = () => {
   const theme = useTheme();
   const [search, setSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("");
   const [projects, setProjects] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const PERIODOS = ['Invierno', 'Verano', 'Ago-Dic', 'Ene-Jul'];
+  const API_BASE = `/api`;
 
   useEffect(() => {
-    const loadProjects = () => {
-      const storedProjects = JSON.parse(localStorage.getItem("proyectos")) || [];
-      setProjects(storedProjects);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [projsRes, orgsRes] = await Promise.all([
+          fetch(`${API_BASE}/projects`),
+          fetch(`${API_BASE}/organizations`),
+        ]);
+        const projsData = await projsRes.json();
+        const orgsData = await orgsRes.json();
+
+        if (projsData.success) {
+          // Normalize field names from API
+          const normalized = projsData.data.map(p => ({
+            ...p,
+            id_proyecto: p.id_proyecto || p.id,
+            nombre_proyecto: p.nombre_proyecto || p.name,
+            descripcion_proyecto: p.descripcion_proyecto || p.description,
+            id_organizacion: p.id_organizacion || p.org_id,
+            cupo_estudiantes: p.cupo_estudiantes || p.capacity,
+            duracion: p.duracion || p.duration,
+            lugar: p.lugar || p.location,
+            horas_acreditadas: p.horas_acreditadas ?? p.accredited_hours,
+            periodo: p.periodo || null,
+          }));
+          setProjects(normalized);
+          localStorage.setItem('proyectos', JSON.stringify(normalized));
+        }
+        if (orgsData.success) {
+          setOrganizations(orgsData.data);
+          localStorage.setItem('organizaciones', JSON.stringify(orgsData.data));
+        }
+      } catch (_) {
+        // Fallback to localStorage
+        setProjects(JSON.parse(localStorage.getItem('proyectos')) || []);
+        setOrganizations(JSON.parse(localStorage.getItem('organizaciones')) || []);
+      } finally {
+        setLoading(false);
+      }
     };
-
-    loadProjects();
-
-    window.addEventListener("projectsUpdated", loadProjects);
-    return () => window.removeEventListener("projectsUpdated", loadProjects);
+    loadData();
   }, []);
 
   // Navigate to EnrollForm
-  const handleRegister = () => {
-    navigate("/student/enrollform");
-  };
+  const handleRegister = () => navigate("/student/enrollform");
 
-  // Get org name by orgID
-  const getOrgName = (id_organizacion) => {
-    const org = organizations.find((o) => o.id_organizacion === id_organizacion);
-    return org ? org.nombre_osf : "";
-  };
-
-  // Filter projects by name and organization
+  // Filter projects by name, organization, and period
   const filteredProjects = projects.filter((project) => {
-    const matchesName = project.nombre_proyecto.toLowerCase().includes(search.toLowerCase());
-    const matchesOrg = orgFilter ? project.id_organizacion === Number(orgFilter) : true;
-    return matchesName && matchesOrg;
+    const matchesName = (project.nombre_proyecto || '').toLowerCase().includes(search.toLowerCase());
+    const matchesOrg = orgFilter ? Number(project.id_organizacion) === Number(orgFilter) : true;
+    const matchesPeriod = periodFilter ? project.periodo === periodFilter : true;
+    return matchesName && matchesOrg && matchesPeriod;
   });
 
   return (
-    <Box sx={{ px: { xs: 2, sm: 4 } }}>
+    <Box sx={{ px: { xs: 2, sm: 3 }, py: 4, width: '100%' }}>
       {/* Title */}
       <Typography
         variant="h4"
@@ -66,7 +96,7 @@ const StudentSlots = () => {
           fontSize: { xs: '0.9rem', sm: '1rem' },
         }}
       >
-        Aquí puedes ver todos los proyectos disponibles para registrarte. Usa el buscador para encontrar proyectos por nombre o filtra por organización.
+        Aquí puedes ver todos los proyectos disponibles para registrarte. Usa el buscador para encontrar proyectos por nombre o filtra por organización y periodo.
         Una vez que encuentres un proyecto que te interese, haz clic en "Registrarse" y después ingresa el código que te proporcione el Socio-Formador.
       </Typography>
 
@@ -93,7 +123,7 @@ const StudentSlots = () => {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+          gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" },
           gap: 2,
           mb: 4,
         }}
@@ -104,9 +134,6 @@ const StudentSlots = () => {
           variant="outlined"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          sx={{
-            '& .MuiOutlinedInput-root': { fontSize: '1rem' },
-          }}
         />
         <TextField
           fullWidth
@@ -114,24 +141,37 @@ const StudentSlots = () => {
           select
           value={orgFilter}
           onChange={(e) => setOrgFilter(e.target.value)}
-          sx={{
-            '& .MuiOutlinedInput-root': { fontSize: '1rem' },
-          }}
         >
           <MenuItem value="">Todas</MenuItem>
           {organizations.map((org) => (
-            <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
-              {org.nombre_osf}
+            <MenuItem key={org.id_organizacion || org.id} value={org.id_organizacion || org.id}>
+              {org.nombre_osf || org.name}
             </MenuItem>
           ))}
         </TextField>
+        <TextField
+          fullWidth
+          label="Filtrar por periodo"
+          select
+          value={periodFilter}
+          onChange={(e) => setPeriodFilter(e.target.value)}
+        >
+          <MenuItem value="">Todos los periodos</MenuItem>
+          {PERIODOS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+        </TextField>
       </Box>
 
-      {/* Projects Table/Cards */}
-      <ProjectsTable 
-        projects={filteredProjects} 
-        getOrgName={getOrgName}
-      />
+      {/* Loading state */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <ProjectsTable
+          projects={filteredProjects}
+          organizations={organizations}
+        />
+      )}
     </Box>
   );
 };

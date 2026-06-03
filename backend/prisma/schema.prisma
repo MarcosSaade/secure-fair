@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  email                String             @unique
+  username             String?            @unique
+  password_hash        String
+  role                 String
+  org_id               Int?
+  is_active            Boolean            @default(true)
+  created_at           DateTime           @default(now())
+  checkins_done        Checkin[]
+  project_codes_issued ProjectCode[]      @relation("IssuedBy")
+  projects_socio       ProjectSocioUser[]
+  student              Student?
+  organization         Organization?      @relation(fields: [org_id], references: [id])
+}
+
+model Organization {
+  id         Int       @id @default(autoincrement())
+  name       String
+  created_at DateTime  @default(now())
+  projects   Project[]
+  users      User[]
+}
+
+model FairPeriod {
+  id          Int          @id @default(autoincrement())
+  name        String
+  starts_at   DateTime
+  ends_at     DateTime
+  is_active   Boolean      @default(true)
+  enrollments Enrollment[]
+  projects    Project[]
+  time_slots  TimeSlot[]
+}
+
+model Project {
+  id               Int                @id @default(autoincrement())
+  org_id           Int
+  period_id        Int
+  name             String
+  description      String?
+  rules_text       String?
+  capacity         Int
+  is_active        Boolean            @default(true)
+  accredited_hours Int?
+  duration         String?
+  location         String?
+  enrollments      Enrollment[]
+  organization     Organization       @relation(fields: [org_id], references: [id])
+  fair_period      FairPeriod         @relation(fields: [period_id], references: [id])
+  project_codes    ProjectCode[]
+  socio_users      ProjectSocioUser[]
+}
+
+model ProjectSocioUser {
+  project_id Int
+  user_id    Int
+  project    Project @relation(fields: [project_id], references: [id])
+  user       User    @relation(fields: [user_id], references: [id])
+
+  @@id([project_id, user_id])
+}
+
+model Student {
+  user_id            Int                @id
+  matricula          String             @unique
+  full_name          String
+  phone              String?
+  apellidos          String?
+  carrera            String?
+  correo_personal    String?
+  hora_registro      String?
+  checked_in_at      String?
+  enrollments        Enrollment[]
+  used_codes         ProjectCode[]      @relation("UsedByStudent")
+  slot_registrations SlotRegistration[]
+  user               User               @relation(fields: [user_id], references: [id])
+}
+
+model TimeSlot {
+  id                 Int                @id @default(autoincrement())
+  period_id          Int
+  starts_at          DateTime
+  ends_at            DateTime
+  capacity           Int
+  location           String
+  slot_registrations SlotRegistration[]
+  fair_period        FairPeriod         @relation(fields: [period_id], references: [id])
+}
+
+model SlotRegistration {
+  id              Int       @id @default(autoincrement())
+  slot_id         Int
+  student_user_id Int
+  created_at      DateTime  @default(now())
+  checkins        Checkin[]
+  time_slot       TimeSlot  @relation(fields: [slot_id], references: [id])
+  student         Student   @relation(fields: [student_user_id], references: [user_id])
+}
+
+model Checkin {
+  id                 Int              @id @default(autoincrement())
+  slot_reg_id        Int
+  checked_in_at      DateTime         @default(now())
+  checked_by_user_id Int
+  checked_by         User             @relation(fields: [checked_by_user_id], references: [id])
+  slot_registration  SlotRegistration @relation(fields: [slot_reg_id], references: [id])
+}
+
+model Enrollment {
+  id                Int        @id @default(autoincrement())
+  period_id         Int
+  project_id        Int
+  student_user_id   Int
+  accepted_rules    Boolean    @default(false)
+  receipt_signature String?
+  created_at        DateTime   @default(now())
+  fair_period       FairPeriod @relation(fields: [period_id], references: [id])
+  project           Project    @relation(fields: [project_id], references: [id])
+  student           Student    @relation(fields: [student_user_id], references: [user_id])
+}
+
+model ProjectCode {
+  id                 Int       @id @default(autoincrement())
+  project_id         Int
+  code_hash          String    @unique
+  expires_at         DateTime
+  issued_by          Int
+  used_by_student_id Int?
+  used_at            DateTime?
+  issuer             User      @relation("IssuedBy", fields: [issued_by], references: [id])
+  project            Project   @relation(fields: [project_id], references: [id])
+  student            Student?  @relation("UsedByStudent", fields: [used_by_student_id], references: [user_id])
+}

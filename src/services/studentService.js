@@ -20,7 +20,10 @@ export const getCurrentStudent = () => {
   const user = JSON.parse(sessionStorage.getItem('user'));
   if (!user) return null;
   const estudiantes = storageService.getEstudiantes();
-  return estudiantes.find(est => est.id_usuario === user.id_usuario) || null;
+  // Compare as strings since id may come as number or string
+  return estudiantes.find(est =>
+    String(est.id_usuario || est.user_id) === String(user.id_usuario || user.id)
+  ) || null;
 };
 
 
@@ -106,12 +109,21 @@ export const saveCheckIn = (qrData) => {
 
   const estudiantes = storageService.getEstudiantes();
   const index = estudiantes.findIndex(est => est.matricula === qrData.matricula);
+  
+  const payload = { checked_in_at: today };
+  
   if (index >= 0) {
-    estudiantes[index] = {
+    storageService.saveEstudiante({
       ...estudiantes[index],
-      checked_in_at: today,
-    };
-    storageService.saveEstudiante(estudiantes);
+      ...payload
+    });
+  } else {
+    // If student is new and not in admin's local storage yet, force API call directly
+    if (qrData.id_usuario) {
+      import('./api').then(({ default: apiClient }) => {
+        apiClient.put(`/students/${qrData.id_usuario}`, payload).catch(console.error);
+      });
+    }
   }
 
   return true;

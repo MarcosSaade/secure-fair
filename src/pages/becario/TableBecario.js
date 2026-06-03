@@ -35,19 +35,63 @@ const TableBec = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
-    const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
-    const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
-    const studsRaw = JSON.parse(localStorage.getItem("estudiantes")) || [];
+    const fetchData = async () => {
+      try {
+        const apiBase = `/api`;
+        
+        const [orgsRes, projsRes, studsRes] = await Promise.all([
+          fetch(`${apiBase}/organizations`),
+          fetch(`${apiBase}/projects`),
+          fetch(`${apiBase}/students`)
+        ]);
 
-    const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
+        const orgsData = await orgsRes.json();
+        const projsData = await projsRes.json();
+        const studsData = await studsRes.json();
 
-    setOrganizaciones(orgs);
-    setProjects(projs);
-    setStudents(studs);
+        const orgs = orgsData.data || [];
+        const projs = projsData.data || [];
+        const studs = studsData.data || [];
+
+        setOrganizaciones(orgs);
+        setProjects(projs);
+        setStudents(studs);
+        
+        localStorage.setItem("organizaciones", JSON.stringify(orgs));
+        localStorage.setItem("proyectos", JSON.stringify(projs));
+        localStorage.setItem("estudiantes", JSON.stringify(studs));
+        
+      } catch (err) {
+        console.error("Error fetching data from API:", err);
+        const orgs = JSON.parse(localStorage.getItem("organizaciones")) || [];
+        const projs = JSON.parse(localStorage.getItem("proyectos")) || [];
+        const studsRaw = JSON.parse(localStorage.getItem("estudiantes")) || [];
+        const studs = Array.isArray(studsRaw) ? studsRaw : Object.values(studsRaw);
+        setOrganizaciones(orgs);
+        setProjects(projs);
+        setStudents(studs);
+      }
+    };
+    
+    fetchData();
   }, []);
 
   // Filtros de estudiantes
   const filteredStudents = students.filter(s => {
+    // Exclude students with no project if a project is selected
+    if (selectedProject) {
+      // New format: enrollments array
+      if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
+        const hasProject = s.enrollments.some(enrollment => enrollment.id_proyecto === Number(selectedProject));
+        if (!hasProject) return false;
+      } else if (s.id_proyecto) {
+        if (s.id_proyecto !== Number(selectedProject)) return false;
+      } else {
+        // No project info at all
+        return false;
+      }
+    }
+
     let matchesOrg = true;
     if (selectedOrg) {
       // Check new format (enrollments array)
@@ -88,14 +132,14 @@ const TableBec = () => {
       // Handle new format (enrollments array)
       if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
         matchesPeriod = s.enrollments.some((enrollment) => {
-          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-          return (enrollment.periodo || project?.periodo) === selectedPeriod;
+          const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(enrollment.id_proyecto || enrollment.project_id));
+          return (enrollment.periodo || project?.periodo || project?.period_id) === selectedPeriod;
         });
       } 
       // Handle old format (single id_proyecto)
       else if (s.id_proyecto) {
-        const project = projects.find(p => p.id_proyecto === s.id_proyecto);
-        matchesPeriod = project?.periodo === selectedPeriod;
+        const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(s.id_proyecto));
+        matchesPeriod = (project?.periodo || project?.period_id) === selectedPeriod;
       } 
       // No project enrolled
       else {
@@ -128,8 +172,8 @@ const TableBec = () => {
       // Handle new format (enrollments array)
       if (Array.isArray(s.enrollments) && s.enrollments.length > 0) {
         s.enrollments.forEach((enrollment) => {
-          const project = projects.find(p => p.id_proyecto === enrollment.id_proyecto);
-          const periodo = enrollment.periodo || project?.periodo;
+          const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(enrollment.id_proyecto || enrollment.project_id));
+          const periodo = enrollment.periodo || project?.periodo || project?.period_id;
           if (periodo) {
             periods.add(periodo);
           }
@@ -137,9 +181,9 @@ const TableBec = () => {
       }
       // Handle old format (single id_proyecto)
       else if (s.id_proyecto) {
-        const project = projects.find(p => p.id_proyecto === s.id_proyecto);
-        if (project?.periodo) {
-          periods.add(project.periodo);
+        const project = projects.find(p => Number(p.id_proyecto || p.id) === Number(s.id_proyecto));
+        if (project?.periodo || project?.period_id) {
+          periods.add(project.periodo || project.period_id);
         }
       }
     });
@@ -252,9 +296,9 @@ const TableBec = () => {
               onChange={(e) => setSelectedOrg(e.target.value)}
             >
               <MenuItem value="">Todas</MenuItem>
-              {organizaciones.map((org) => (
-                <MenuItem key={org.id_organizacion} value={org.id_organizacion}>
-                  {org.nombre_osf}
+              {[...organizaciones].sort((a, b) => (a.nombre_osf || a.name || '').localeCompare(b.nombre_osf || b.name || '', 'es')).map((org) => (
+                <MenuItem key={org.id_organizacion || org.id} value={org.id_organizacion || org.id}>
+                  {org.nombre_osf || org.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -267,11 +311,12 @@ const TableBec = () => {
               onChange={(e) => setSelectedProject(e.target.value)}
             >
               <MenuItem value="">Todos</MenuItem>
-              {projects
-                .filter((proj) => (selectedOrg ? proj.id_organizacion === Number(selectedOrg) : true))
+              {[...projects]
+                .filter((proj) => (selectedOrg ? Number(proj.id_organizacion || proj.org_id) === Number(selectedOrg) : true))
+                .sort((a, b) => (a.nombre_proyecto || a.name || '').localeCompare(b.nombre_proyecto || b.name || '', 'es'))
                 .map((proj) => (
-                  <MenuItem key={proj.id_proyecto} value={proj.id_proyecto}>
-                    {proj.nombre_proyecto}
+                  <MenuItem key={proj.id_proyecto || proj.id} value={proj.id_proyecto || proj.id}>
+                    {proj.nombre_proyecto || proj.name}
                   </MenuItem>
                 ))}
             </TextField>

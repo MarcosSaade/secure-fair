@@ -11,6 +11,7 @@ import {students as dummyStudents} from './pages/students';
 import { projects as projectsData } from "./pages/projects";
 import { organizations as dummiesOrg } from "./pages/organization";
 import {users} from './pages/users';
+import { initStorageFromDB } from './services/StorageService';
 
 // ==================== LAYOUTS ====================
 import StudentLayout from './layouts/StudentLayout';
@@ -62,59 +63,9 @@ const NotFound = () => <Box sx={{ p: 4 }}>404 - Page Not Found</Box>;
 
 function App() {
 
-    // Initialize dummy student accounts in localStorage if not already present
+    // Sync data from database to localStorage on startup
     React.useEffect(() => {
-      // Inicializar solo si localStorage está vacío
-      if (!localStorage.getItem("estudiantes")) {
-        const estudiantesArray = Object.values(dummyStudents);
-        console.log("Guardando estudiantes dummy:", estudiantesArray);
-        localStorage.setItem("estudiantes", JSON.stringify(estudiantesArray));
-      }
-
-      if (!localStorage.getItem("organizaciones")) {
-        localStorage.setItem("organizaciones", JSON.stringify(dummiesOrg));
-      }
-
-      if (!localStorage.getItem("proyectos")) {
-        const proyectosIniciales = projectsData.map(p => ({
-          ...p,
-          inscritos: p.inscritos || 0
-        }));
-        localStorage.setItem("proyectos", JSON.stringify(proyectosIniciales));
-      }
-
-      //  Initialize admins - filter from dummy users
-      if (!localStorage.getItem("admins")) {
-        const adminsArray = users.filter(user => user.tipo === "admin");
-        console.log("Guardando admins dummy:", adminsArray);
-        localStorage.setItem("admins", JSON.stringify(adminsArray));
-      }
-
-      //  Initialize socios - filter from dummy users
-      if (!localStorage.getItem("socios")) {
-        const sociosArray = users.filter(user => user.tipo === "socio");
-        console.log("Guardando socios dummy:", sociosArray);
-        localStorage.setItem("socios", JSON.stringify(sociosArray));
-      }
-
-      //  Initialize usuarios collection (for login tracking)
-      if (!localStorage.getItem("usuarios")) {
-        const usuariosArray = users.map(user => ({
-          id_usuario: user.id_usuario,
-          username: user.username,
-          contraseña: user.contraseña,
-          tipo: user.tipo,
-          activo: user.activo,
-          ...(user.id_organizacion && { id_organizacion: user.id_organizacion })
-        }));
-        console.log("Guardando usuarios dummy:", usuariosArray);
-        // Save as object with id_usuario as key for StorageService compatibility
-        const usuariosObj = {};
-        usuariosArray.forEach(user => {
-          usuariosObj[user.id_usuario] = user;
-        });
-        localStorage.setItem("usuarios", JSON.stringify(usuariosObj));
-      }
+      initStorageFromDB();
     }, []);
     // Routes
   return (

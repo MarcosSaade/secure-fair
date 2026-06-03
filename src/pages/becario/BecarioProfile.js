@@ -40,19 +40,25 @@ const BecarioProfile = () => {
   // 🔹 Cargar datos desde usuarios
   useEffect(() => {
     if (!id_usuario) return;
-
-    const usuarios = storageService.getUsuarios();
-    const currentUser = usuarios.find(u => u.id_usuario === id_usuario);
-
-    if (currentUser) {
-      setUserData(currentUser);
-      setFormData({
-        username: currentUser.username || '',
-        password: currentUser.contraseña || '',
-        newPassword: '',
-        confirmNewPassword: '',
-      });
-    }
+    const fetchUser = async () => {
+      try {
+        const apiBase = `/api`;
+        const res = await fetch(`${apiBase}/users/${id_usuario}`);
+        // users route doesn't have /:id, use session data
+      } catch (err) { /* ignore */ }
+      // Use session data as source
+      const currentUser = user;
+      if (currentUser) {
+        setUserData(currentUser);
+        setFormData({
+          username: currentUser.username || currentUser.email || '',
+          password: currentUser.password_hash || currentUser.contrasena || '',
+          newPassword: '',
+          confirmNewPassword: '',
+        });
+      }
+    };
+    fetchUser();
   }, [id_usuario]);
 
   const handleInputChange = (e) => {
@@ -63,60 +69,40 @@ const BecarioProfile = () => {
     }));
   };
 
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
-    // 🔹 Validaciones de contraseña (igual que admin)
     if (formData.newPassword.trim()) {
       const pw = formData.newPassword;
-
-      if (pw.length < 12)
-        return setMessage({ type: 'error', text: 'La contraseña debe tener al menos 12 caracteres' });
-
-      if (!/[A-Z]/.test(pw))
-        return setMessage({ type: 'error', text: 'La contraseña debe contener mayúsculas' });
-
-      if (!/[0-9]/.test(pw))
-        return setMessage({ type: 'error', text: 'La contraseña debe contener números' });
-
-      if (!/[ !"#$%&'()*+,-./:;<=>?@[\\\]^_`{|}~]/.test(pw))
-        return setMessage({ type: 'error', text: 'La contraseña debe contener caracteres especiales' });
-
-      if (pw !== formData.confirmNewPassword)
-        return setMessage({ type: 'error', text: 'Las contraseñas no coinciden' });
+      if (pw.length < 12) return setMessage({ type: 'error', text: 'La contraseña debe tener al menos 12 caracteres' });
+      if (!/[A-Z]/.test(pw)) return setMessage({ type: 'error', text: 'La contraseña debe contener mayúsculas' });
+      if (!/[0-9]/.test(pw)) return setMessage({ type: 'error', text: 'La contraseña debe contener números' });
+      if (pw !== formData.confirmNewPassword) return setMessage({ type: 'error', text: 'Las contraseñas no coinciden' });
     }
 
-    const finalPassword =
-      formData.newPassword.trim() || formData.password;
+    const finalPassword = formData.newPassword.trim() || formData.password;
 
-    const updatedUser = {
-      ...userData,
-      username: formData.username,
-      contraseña: finalPassword,
-    };
+    // Save to DB
+    try {
+      const apiBase = `/api`;
+      const updateData = { username: formData.username };
+      if (formData.newPassword.trim()) updateData.password = finalPassword;
+      const res = await fetch(`${apiBase}/users/${id_usuario}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      const result = await res.json();
+      if (!result.success) { setMessage({ type: 'error', text: result.message || 'Error al guardar' }); return; }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Error de conexión' }); return;
+    }
 
-    //  Guardar SOLO en usuarios
-    storageService.saveUsuario(id_usuario, updatedUser);
-
-    //  Actualizar sessionStorage
+    const updatedUser = { ...userData, username: formData.username, password_hash: finalPassword, contrasena: finalPassword };
     sessionStorage.setItem('user', JSON.stringify(updatedUser));
-
     setUserData(updatedUser);
-    setFormData(prev => ({
-      ...prev,
-      password: finalPassword,
-      newPassword: '',
-      confirmNewPassword: '',
-    }));
-
-    setMessage({
-      type: 'success',
-      text: formData.newPassword
-        ? 'Perfil actualizado. Contraseña cambiada exitosamente.'
-        : 'Perfil actualizado exitosamente.',
-    });
-
+    setFormData(prev => ({ ...prev, password: finalPassword, newPassword: '', confirmNewPassword: '' }));
+    setMessage({ type: 'success', text: formData.newPassword ? 'Perfil actualizado. Contraseña cambiada.' : 'Perfil actualizado exitosamente.' });
     setEditMode(false);
   };
 
